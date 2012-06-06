@@ -35,7 +35,7 @@ import static org.junit.Assert.*;
 public class WinAgentApiTest {
 
 
-    //static WinFSElemAccessor cache;
+    //static WinFSElemAccessor fsAcess;
 
     static HashFunctionPool pool;
 
@@ -54,7 +54,7 @@ public class WinAgentApiTest {
     @BeforeClass
     public static void setUpClass() throws Exception
     {
-        //cache = new WinFSElemAccessor();
+        //fsAcess = new WinFSElemAccessor();
         pool = new HashFunctionPool(10);
         instance = new WinAgentApi(pool);
 
@@ -347,13 +347,13 @@ public class WinAgentApiTest {
                 colourArray(object.complete_data);
             }
 
-            byte[] r = instance.read_xa(data, 0, 170);
+            byte[] r = instance.rawReadXA(data, 0, 170);
             assertEquals(r[160], 0);
 
-            r = instance.read_xa(data, 140, 140);
+            r = instance.rawReadXA(data, 140, 140);
             assertEquals(r[20], 0);
 
-            r = instance.read_xa(data, 310, 170);
+            r = instance.rawReadXA(data, 310, 170);
             assertEquals(r[10], 0);
             assertEquals(r[169], (byte)159);
 
@@ -404,8 +404,8 @@ public class WinAgentApiTest {
             RemoteFSElemWrapper oh = instance.open_data(origelem, flags);
             RemoteFSElemWrapper rh = instance.open_data(restoreelem, flags);
 
-            WinFileHandleData odata = instance.cache.get_handleData(oh);
-            WinFileHandleData rdata = instance.cache.get_handleData(rh);
+            WinFileHandleData odata = (WinFileHandleData)instance.getNativeAccesor().get_handleData(oh);
+            WinFileHandleData rdata = (WinFileHandleData)instance.getNativeAccesor().get_handleData(rh);
 
             List<StreamEntry> ol = odata.readStreamList();
             List<StreamEntry> rl = rdata.readStreamList();

@@ -27,7 +27,7 @@ public class UnixMultiThreadedFileReader extends MultiThreadedFileReader
     protected void read( byte[] block, FileCacheElem elem )
     {
         UnixAgentApi api = (UnixAgentApi) elem.getApi();
-        byte[] data = api._read( block, actWrapper, elem.getOffset(), elem.getLen());
+        byte[] data = api.rawRead( block, actWrapper, elem.getOffset(), elem.getLen());
         if (data == null || data.length == 0)
         {
             data = data;

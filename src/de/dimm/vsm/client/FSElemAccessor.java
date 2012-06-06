@@ -18,13 +18,14 @@ import java.util.List;
  *
  * @author Administrator
  */
-public class FSElemAccessor
+public abstract class FSElemAccessor
 {
     // MORE THAN TWO DONT MAKWE SENSE
     public static final int MAX_FILE_READERS = 1;
 
     List<MultiThreadedFileReader> mtfrBufferList;
     private HashMap<Long, MultiThreadedFileReader> mtfrMap;
+    protected HashMap<Long,FileHandleData> hash_map;
 
     public FSElemAccessor( NetAgentApi api )
     {
@@ -35,6 +36,7 @@ public class FSElemAccessor
         {
             mtfrBufferList.add(  MultiThreadedFileReader.MTFRFactory(api) );
         }
+        hash_map = new HashMap<Long, FileHandleData>();
     }
 
     public MultiThreadedFileReader createMultiThreadedFileReader( NetAgentApi api, RemoteFSElemWrapper wrapper ) throws IOException
@@ -57,6 +59,10 @@ public class FSElemAccessor
     {
         return mtfrMap.get(wrapper.getHandle());
     }
+
+     public abstract RemoteFSElemWrapper open_handle( RemoteFSElem elem, int flags );
+     public abstract RemoteFSElemWrapper open_xa_handle( RemoteFSElem elem, int flags );
+
 
     public boolean close_handle( RemoteFSElemWrapper wrapper ) throws IOException
     {
@@ -114,6 +120,18 @@ public class FSElemAccessor
             AttributeContainerImpl.set(dir, ac);
         }
     }
+    
+
+    public FileHandleData get_handleData( RemoteFSElemWrapper wrapper)
+    {
+        FileHandleData data = hash_map.get(wrapper.getHandle());
+
+        return data;
+    }
+
+    public abstract boolean createSymlink( String path, String linkPath );
+
+
 
 
 }

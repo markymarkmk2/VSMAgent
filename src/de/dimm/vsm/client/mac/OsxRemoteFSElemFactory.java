@@ -3,8 +3,11 @@
  * and open the template in the editor.
  */
 
-package de.dimm.vsm.client.unix;
+package de.dimm.vsm.client.mac;
 
+import com.sun.jna.Library;
+import com.sun.jna.Native;
+import com.sun.jna.Structure;
 import de.dimm.vsm.client.AttributeContainerImpl;
 import de.dimm.vsm.client.RemoteFSElemFactory;
 import de.dimm.vsm.client.jna.PosixWrapper;
@@ -20,6 +23,7 @@ import org.jruby.ext.posix.POSIX;
 import org.jruby.ext.posix.Passwd;
 
 
+
 /**
  *
  * @author Administrator
@@ -27,6 +31,45 @@ import org.jruby.ext.posix.Passwd;
 public class OsxRemoteFSElemFactory implements RemoteFSElemFactory
 {
 
+    public class StatStructure extends Structure
+{
+
+    public long st_dev; /* ID of device containing file */
+    public long st_ino; /* inode number */
+    public long st_mode; /* protection */
+    public long st_nlink; /* number of hard links */
+    public long st_uid; /* user ID of owner */
+    public long st_gid; /* group ID of owner */
+    public long st_rdev; /* device ID (if special file) */
+    public long st_size; /* total size, in bytes */
+    public long st_blksize; /* blocksize for filesystem I/O */
+    public long st_blocks; /* number of blocks allocated */
+    public long st_atime; /* time of last access */
+    public long st_mtime; /* time of last modification */
+    public long st_ctime; /* time of last status change */
+
+}
+
+public class StatFSStructure extends Structure
+{
+         public long        f_bsize;        /* fundamental file system block size */
+         public long          f_iosize;       /* optimal transfer block size */
+         public long         f_blocks;       /* total data blocks in file system */
+         public long         f_bfree;        /* free blocks in fs */
+         public long         f_bavail;       /* free blocks avail to non-superuser */
+         public long         f_files;        /* total file nodes in file system */
+         public long         f_ffree;        /* free file nodes in fs */
+         public long          f_fsid;         /* file system id */
+         public long           f_owner;        /* user that mounted the filesystem */
+         public long         f_type;         /* type of filesystem */
+         public long         f_flags;        /* copy of mount exported flags */
+         public long         f_fssubtype;    /* fs sub-type (flavor) */
+         byte[]            f_fstypename = new byte[16];   /* fs type name */
+         byte[]            f_mntonname = new byte[1024 ];        /* directory on which mounted */
+         byte[]            f_mntfromname = new byte[1024];      /* mounted filesystem */
+         int[]        f_reserved = new int[8];  /* For future use */
+     };
+     
     String getTypFromStat(FileStat stat)
     {
         if (stat.isFile())
@@ -38,6 +81,32 @@ public class OsxRemoteFSElemFactory implements RemoteFSElemFactory
 
         return FileSystemElemNode.FT_OTHER;
     }
+
+
+    private static StatInterface delegate = (StatInterface)Native.loadLibrary( "c", StatInterface.class);
+
+
+
+    public static int stat(String path, StatStructure stat )
+    {
+        return delegate.stat( path, stat );
+    }
+    public static int stat(String path, StatFSStructure stat )
+    {
+        return delegate.statfs( path, stat );
+    }
+
+
+
+    interface StatInterface extends Library
+    {
+        int mkfifo( String pathname, int mode_t );
+        int unlink( String path );
+        int chmod( String path, int mode_t );
+        int stat( String path, StatStructure stat );
+        int statfs( String path, StatFSStructure stat );
+    }
+
 
     @Override
     public synchronized  RemoteFSElem create_elem( File fh, boolean lazyAclInfo )

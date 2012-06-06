@@ -10,6 +10,7 @@ import com.sun.jna.platform.win32.WinNT.HANDLE;
 import com.sun.jna.ptr.IntByReference;
 import com.sun.jna.ptr.PointerByReference;
 import de.dimm.vsm.client.FSElemAccessor;
+import de.dimm.vsm.client.FileHandleData;
 import de.dimm.vsm.client.NetAgentApi;
 import de.dimm.vsm.client.jna.LibKernel32;
 import de.dimm.vsm.client.jna.LibKernel32.FILETIME;
@@ -83,30 +84,29 @@ class StreamEntry
 
 }
 
-class WinFileHandleData
+class WinFileHandleData extends FileHandleData
 {
     HANDLE handle;
-
     
     PointerByReference context;
-
     List<StreamEntry> streamList;
     
-    RemoteFSElem elem;
+   
 
     public WinFileHandleData(HANDLE h, boolean xa, RemoteFSElem elem)
     {
+        super(elem);
         this.handle = h;
 
         streamList = null;
+
         if (xa)
             context = new PointerByReference();
 
-        this.elem = elem;
-
     }
 
-    boolean close()
+    @Override
+    public boolean close()
     {
         if (streamList != null)
         {
@@ -118,17 +118,6 @@ class WinFileHandleData
     public RemoteFSElem getElem()
     {
         return elem;
-    }
-
-    boolean prefetch = false;
-    void setPrefetch( boolean b )
-    {
-        prefetch = b;
-    }
-
-    public boolean isPrefetch()
-    {
-        return prefetch;
     }
 
 
@@ -361,12 +350,12 @@ public class WinFSElemAccessor extends FSElemAccessor
         return data.handle;
     }
 
-    WinFileHandleData get_handleData( RemoteFSElemWrapper wrapper)
-    {
-        WinFileHandleData data = hash_map.get(wrapper.getHandle());
-
-        return data;
-    }
+//    WinFileHandleData get_handleData( RemoteFSElemWrapper wrapper)
+//    {
+//        WinFileHandleData data = hash_map.get(wrapper.getHandle());
+//
+//        return data;
+//    }
 
     void setFiletime( HANDLE h, RemoteFSElem dir )
     {

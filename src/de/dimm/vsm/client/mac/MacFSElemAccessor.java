@@ -3,7 +3,7 @@
  * and open the template in the editor.
  */
 
-package de.dimm.vsm.client.unix;
+package de.dimm.vsm.client.mac;
 
 import de.dimm.vsm.client.FSElemAccessor;
 import de.dimm.vsm.client.FileHandleData;
@@ -20,11 +20,11 @@ import org.jruby.ext.posix.POSIX;
 
 
 
-class UnixFileHandleData extends FileHandleData
+class MacFileHandleData extends FileHandleData
 {
     RandomAccessFile handle;
 
-    public UnixFileHandleData( RemoteFSElem elem, RandomAccessFile handle )
+    public MacFileHandleData( RemoteFSElem elem, RandomAccessFile handle )
     {
         super(elem);
         this.handle = handle;
@@ -51,13 +51,13 @@ class UnixFileHandleData extends FileHandleData
  *
  * @author Administrator
  */
-public class UnixFSElemAccessor extends FSElemAccessor
+public class MacFSElemAccessor extends FSElemAccessor
 {
     
     static long newHandleValue = 1;
 
    
-    public UnixFSElemAccessor( NetAgentApi api)
+    public MacFSElemAccessor( NetAgentApi api)
     {
         super(api);        
     }
@@ -82,7 +82,7 @@ public class UnixFSElemAccessor extends FSElemAccessor
             return null;
         }
 
-        UnixFileHandleData data = new UnixFileHandleData(elem,fh);
+        MacFileHandleData data = new MacFileHandleData(elem,fh);
 
         RemoteFSElemWrapper wrapper = new RemoteFSElemWrapper(newHandleValue++, /*xa*/false);
 
@@ -95,7 +95,7 @@ public class UnixFSElemAccessor extends FSElemAccessor
     public RemoteFSElemWrapper open_xa_handle( RemoteFSElem elem, int flags )
     {
         RandomAccessFile fh = null;
-        String path = NetatalkRemoteFSElemFactory.getADPath( elem.getPath() );
+        String path = OsxRemoteFSElemFactory.getADPath( elem.getPath() );
         try
         {
             if (flags == AgentApi.FL_RDONLY)
@@ -124,7 +124,7 @@ public class UnixFSElemAccessor extends FSElemAccessor
             return null;
         }
 
-        UnixFileHandleData data = new UnixFileHandleData(elem,fh);
+        MacFileHandleData data = new MacFileHandleData(elem,fh);
 
         RemoteFSElemWrapper wrapper = new RemoteFSElemWrapper(newHandleValue++, /*xa*/true);
 
@@ -151,7 +151,7 @@ public class UnixFSElemAccessor extends FSElemAccessor
     
     public RandomAccessFile get_handle( RemoteFSElemWrapper wrapper)
     {
-        UnixFileHandleData data = (UnixFileHandleData)hash_map.get(wrapper.getHandle());
+        MacFileHandleData data = (MacFileHandleData)hash_map.get(wrapper.getHandle());
         if (data == null)
             return null;
 

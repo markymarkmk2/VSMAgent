@@ -27,7 +27,7 @@ public class WinMultiThreadedFileReader extends MultiThreadedFileReader
     protected void read( byte[] block, FileCacheElem elem )
     {
         WinAgentApi api = (WinAgentApi)elem.getApi();
-        byte[] data = api._read(actWrapper, elem.getOffset(), elem.getLen());
+        byte[] data = api.rawRead(actWrapper, elem.getOffset(), elem.getLen());
         if (data == null || data.length == 0)
         {
             data = data;

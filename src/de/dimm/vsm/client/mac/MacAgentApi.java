@@ -2,8 +2,9 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-package de.dimm.vsm.client.unix;
+package de.dimm.vsm.client.mac;
 
+import de.dimm.vsm.client.unix.*;
 import com.sun.jna.Pointer;
 import com.sun.jna.ptr.IntByReference;
 import de.dimm.vsm.Utilities.CryptTools;
@@ -44,12 +45,13 @@ import org.apache.commons.codec.binary.Base64;
  *
  * @author Administrator
  */
-public class UnixAgentApi extends NetAgentApi
+public class MacAgentApi extends NetAgentApi
 {
 
     public static final int RSRC_NETATALK = 1;
     public static final int RSRC_ES = 2;
     public static final int RSRC_XINET = 3;
+    public static final int RSRC_USCORE = 4;
     public static final String NETATALK_RSRCDIR = ".AppleDouble";
     public static final String ES_RSRCDIR = ".rsrc";
     public static final String XINET_RSRCDIR = ".HSResource";
@@ -61,30 +63,26 @@ public class UnixAgentApi extends NetAgentApi
    
    
 
-    public UnixAgentApi( HashFunctionPool hash_pool, String cdpIpFilter )
+    public MacAgentApi( HashFunctionPool hash_pool, String cdpIpFilter )
     {
         this.hash_pool = hash_pool;
 
-        fsAcess = new UnixFSElemAccessor(this);
+        fsAcess = new MacFSElemAccessor(this);
         
         options = new Properties();
 
-        hfManager = new UnixHFManager();
+        hfManager = new MacHFManager();
 
-        if (Main.is_solaris())
-        {
-            snapshot = new ZFSSnapShotHandler();
-            snapshot.init();
-        }
+       
         //if ()
-        factory = new NetatalkRemoteFSElemFactory();
+        factory = new OsxRemoteFSElemFactory();
         this.cdpIpFilter = cdpIpFilter;
         
     }
 
-    private UnixFSElemAccessor getNativeAccesor()
+    private MacFSElemAccessor getNativeAccesor()
     {
-        return (UnixFSElemAccessor) fsAcess;
+        return (MacFSElemAccessor) fsAcess;
     }
 
     
@@ -121,6 +119,8 @@ public class UnixAgentApi extends NetAgentApi
     {
         switch (rsrcMode)
         {
+            case RSRC_USCORE:
+                return f.getName().startsWith("._");
             case RSRC_NETATALK:
                 return f.getName().equals(NETATALK_RSRCDIR);
             case RSRC_ES:

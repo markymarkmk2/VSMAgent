@@ -6,6 +6,7 @@
 package de.dimm.vsm.client.mac;
 
 import com.sun.jna.Library;
+import com.sun.jna.Memory;
 import com.sun.jna.Native;
 import com.sun.jna.Structure;
 import de.dimm.vsm.client.AttributeContainerImpl;
@@ -16,6 +17,8 @@ import de.dimm.vsm.net.RemoteFSElem;
 import de.dimm.vsm.records.FileSystemElemNode;
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.HashMap;
 import org.jruby.ext.posix.FileStat;
 import org.jruby.ext.posix.Group;
@@ -31,7 +34,7 @@ import org.jruby.ext.posix.Passwd;
 public class OsxRemoteFSElemFactory implements RemoteFSElemFactory
 {
 
-    public class StatStructure extends Structure
+    static public class StatStructure extends Structure
 {
 
     public long st_dev; /* ID of device containing file */
@@ -48,10 +51,37 @@ public class OsxRemoteFSElemFactory implements RemoteFSElemFactory
     public long st_mtime; /* time of last modification */
     public long st_ctime; /* time of last status change */
 
-}
 
-public class StatFSStructure extends Structure
+    
+    }
+///*
+// * struct statfs {
+//         short   f_otype;    /* type of file system (reserved: zero) */
+//         short   f_oflags;   /* copy of mount flags (reserved: zero) */
+//         long    f_bsize;    /* fundamental file system block size */
+//         long    f_iosize;   /* optimal transfer block size */
+//         long    f_blocks;   /* total data blocks in file system */
+//         long    f_bfree;    /* free blocks in fs */
+//         long    f_bavail;   /* free blocks avail to non-superuser */
+//         long    f_files;    /* total file nodes in file system */
+//         long    f_ffree;    /* free file nodes in fs */
+//         fsid_t  f_fsid;     /* file system id */
+//         uid_t   f_owner;    /* user that mounted the file system */
+//         short   f_reserved1;        /* reserved for future use */
+//         short   f_type;     /* type of file system (reserved) */
+//         long    f_flags;    /* copy of mount flags (reserved) */
+//         long    f_reserved2[2];     /* reserved for future use */
+//         char    f_fstypename[MFSNAMELEN]; /* fs type name */
+//         char    f_mntonname[MNAMELEN];    /* directory on which mounted */
+//         char    f_mntfromname[MNAMELEN];  /* mounted file system */
+//         char    f_reserved3;        /* reserved for future use */
+//         long    f_reserved4[4];     /* reserved for future use */
+//     };
+// */
+static public class StatFSStructure extends Structure
 {
+         public short       f_otype;    /* type of file system (reserved: zero) */
+         public short       f_oflags;   /* copy of mount flags (reserved: zero) */
          public long        f_bsize;        /* fundamental file system block size */
          public long          f_iosize;       /* optimal transfer block size */
          public long         f_blocks;       /* total data blocks in file system */
@@ -60,14 +90,16 @@ public class StatFSStructure extends Structure
          public long         f_files;        /* total file nodes in file system */
          public long         f_ffree;        /* free file nodes in fs */
          public long          f_fsid;         /* file system id */
-         public long           f_owner;        /* user that mounted the filesystem */
-         public long         f_type;         /* type of filesystem */
+         public short           f_owner;        /* user that mounted the filesystem */
+         public short         f_type;         /* type of filesystem */
          public long         f_flags;        /* copy of mount exported flags */
          public long         f_fssubtype;    /* fs sub-type (flavor) */
-         byte[]            f_fstypename = new byte[16];   /* fs type name */
-         byte[]            f_mntonname = new byte[1024 ];        /* directory on which mounted */
-         byte[]            f_mntfromname = new byte[1024];      /* mounted filesystem */
-         int[]        f_reserved = new int[8];  /* For future use */
+         public long         f_freserved1;    /* fs sub-type (flavor) */
+         
+         
+//         ByteBuffer          f_fstypename = ByteBuffer.allocate(16);
+//         ByteBuffer          f_mntonname = ByteBuffer.allocate(1024);
+//         ByteBuffer          f_mntfromname = ByteBuffer.allocate(1024);
      };
      
     String getTypFromStat(FileStat stat)
@@ -91,7 +123,11 @@ public class StatFSStructure extends Structure
     {
         return delegate.stat( path, stat );
     }
-    public static int stat(String path, StatFSStructure stat )
+    public static int statfs(String path, StatFSStructure stat )
+    {
+        return delegate.statfs( path, stat );
+    }
+    public static int statbfs(String path, ByteBuffer stat )
     {
         return delegate.statfs( path, stat );
     }
@@ -105,8 +141,73 @@ public class StatFSStructure extends Structure
         int chmod( String path, int mode_t );
         int stat( String path, StatStructure stat );
         int statfs( String path, StatFSStructure stat );
+        int statfs( String path, ByteBuffer bb);
+    }
+    static String getFSType( ByteBuffer bb )
+    {
+        byte[] b = new byte[15];
+        byte[] arr = bb.array();
+        System.arraycopy(arr, 104, b, 0,  b.length);
+        return new String(b);
+    }
+    static String getMntFrom( ByteBuffer bb )
+    {
+        byte[] b = new byte[90];
+        byte[] arr = bb.array();
+        System.arraycopy(arr, 119, b, 0,  b.length);
+        return new String(b);
+    }
+    static String getMntTo( ByteBuffer bb )
+    {
+        byte[] b = new byte[255];
+        byte[] arr = bb.array();
+        System.arraycopy(arr, 209, b, 0,  b.length);
+        return new String(b);
+    }
+    static long getLong(ByteBuffer bb, int offset)
+    {
+        byte[] arr = bb.array();
+        ByteBuffer bb2 = ByteBuffer.wrap(arr);
+        bb2.order(ByteOrder.LITTLE_ENDIAN);
+        return bb2.getLong(offset);    
+    }
+    static short getShort(ByteBuffer bb, int offset)
+    {
+        byte[] arr = bb.array();
+        ByteBuffer bb2 = ByteBuffer.wrap(arr);
+        bb2.order(ByteOrder.LITTLE_ENDIAN);
+        return bb2.getShort(offset);    
     }
 
+    public static void main( String[] args)
+    {
+    
+        StatFSStructure stat = new StatFSStructure();
+        ByteBuffer bb = ByteBuffer.allocate(500);
+        
+//        statfs("/", stat);
+        statbfs("/", bb);
+//        long b = stat.f_bsize;
+//        if (b == 0)
+//            b = stat.f_iosize;
+        long b = getLong(bb, 8) / 1024;
+        if (b == 0)
+            b = getLong(bb, 8);
+        long iosize = getLong(bb, 16);
+        long blocks = getLong(bb, 24);
+        long bfree = getLong(bb, 40);
+        long bavail = getLong(bb, 48);
+        
+        
+        System.out.println( getFSType(bb) );  
+        System.out.println( getMntFrom(bb) );  
+        System.out.println( getMntTo(bb) ); 
+        System.out.println( "Free: " + b*bfree ); 
+        System.out.println( "Total: " + b*bavail );  
+        System.out.println( "Used: " + b*(bavail-bfree) );  
+        
+        
+    }
 
     @Override
     public synchronized  RemoteFSElem create_elem( File fh, boolean lazyAclInfo )
@@ -291,17 +392,17 @@ public class StatFSStructure extends Structure
             }
         }
     }
-
-    public static void main( String[] args )
-    {
-
-        last_ts = System.currentTimeMillis();
-        speed_test(new File("M:\\ITunes Michael"));
-
-
-        //long l = eval_xa_len( new File("manifest.mf") );
-        
-    }
+//
+//    public static void main( String[] args )
+//    {
+//
+//        last_ts = System.currentTimeMillis();
+//        speed_test(new File("M:\\ITunes Michael"));
+//
+//
+//        //long l = eval_xa_len( new File("manifest.mf") );
+//        
+//    }
 
 
     static HashMap<Integer, String> attrHashMap = new HashMap<Integer, String>();

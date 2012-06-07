@@ -33,6 +33,7 @@ import org.jruby.ext.posix.Passwd;
  */
 public class OsxRemoteFSElemFactory implements RemoteFSElemFactory
 {
+    ByteBuffer statBuffer = ByteBuffer.allocate(500);
 
     static public class StatStructure extends Structure
 {
@@ -78,29 +79,6 @@ public class OsxRemoteFSElemFactory implements RemoteFSElemFactory
 //         long    f_reserved4[4];     /* reserved for future use */
 //     };
 // */
-static public class StatFSStructure extends Structure
-{
-         public short       f_otype;    /* type of file system (reserved: zero) */
-         public short       f_oflags;   /* copy of mount flags (reserved: zero) */
-         public long        f_bsize;        /* fundamental file system block size */
-         public long          f_iosize;       /* optimal transfer block size */
-         public long         f_blocks;       /* total data blocks in file system */
-         public long         f_bfree;        /* free blocks in fs */
-         public long         f_bavail;       /* free blocks avail to non-superuser */
-         public long         f_files;        /* total file nodes in file system */
-         public long         f_ffree;        /* free file nodes in fs */
-         public long          f_fsid;         /* file system id */
-         public short           f_owner;        /* user that mounted the filesystem */
-         public short         f_type;         /* type of filesystem */
-         public long         f_flags;        /* copy of mount exported flags */
-         public long         f_fssubtype;    /* fs sub-type (flavor) */
-         public long         f_freserved1;    /* fs sub-type (flavor) */
-         
-         
-//         ByteBuffer          f_fstypename = ByteBuffer.allocate(16);
-//         ByteBuffer          f_mntonname = ByteBuffer.allocate(1024);
-//         ByteBuffer          f_mntfromname = ByteBuffer.allocate(1024);
-     };
      
     String getTypFromStat(FileStat stat)
     {
@@ -123,13 +101,10 @@ static public class StatFSStructure extends Structure
     {
         return delegate.stat( path, stat );
     }
-    public static int statfs(String path, StatFSStructure stat )
+
+    public int statbfs(String path )
     {
-        return delegate.statfs( path, stat );
-    }
-    public static int statbfs(String path, ByteBuffer stat )
-    {
-        return delegate.statfs( path, stat );
+        return delegate.statfs( path, statBuffer  );
     }
 
 
@@ -140,40 +115,40 @@ static public class StatFSStructure extends Structure
         int unlink( String path );
         int chmod( String path, int mode_t );
         int stat( String path, StatStructure stat );
-        int statfs( String path, StatFSStructure stat );
+      
         int statfs( String path, ByteBuffer bb);
     }
-    static String getFSType( ByteBuffer bb )
+     String getFSType( )
     {
         byte[] b = new byte[15];
-        byte[] arr = bb.array();
+        byte[] arr = statBuffer.array();
         System.arraycopy(arr, 104, b, 0,  b.length);
         return new String(b);
     }
-    static String getMntFrom( ByteBuffer bb )
+     String getMntFrom()
     {
         byte[] b = new byte[90];
-        byte[] arr = bb.array();
+        byte[] arr = statBuffer.array();
         System.arraycopy(arr, 119, b, 0,  b.length);
         return new String(b);
     }
-    static String getMntTo( ByteBuffer bb )
+     String getMntTo()
     {
         byte[] b = new byte[255];
-        byte[] arr = bb.array();
+        byte[] arr = statBuffer.array();
         System.arraycopy(arr, 209, b, 0,  b.length);
         return new String(b);
     }
-    static long getLong(ByteBuffer bb, int offset)
+     long getLong( int offset)
     {
-        byte[] arr = bb.array();
+        byte[] arr = statBuffer.array();
         ByteBuffer bb2 = ByteBuffer.wrap(arr);
         bb2.order(ByteOrder.LITTLE_ENDIAN);
         return bb2.getLong(offset);    
     }
-    static short getShort(ByteBuffer bb, int offset)
+     short getShort(int offset)
     {
-        byte[] arr = bb.array();
+        byte[] arr = statBuffer.array();
         ByteBuffer bb2 = ByteBuffer.wrap(arr);
         bb2.order(ByteOrder.LITTLE_ENDIAN);
         return bb2.getShort(offset);    
@@ -181,32 +156,36 @@ static public class StatFSStructure extends Structure
 
     public static void main( String[] args)
     {
-    
-        StatFSStructure stat = new StatFSStructure();
-        ByteBuffer bb = ByteBuffer.allocate(500);
+        OsxRemoteFSElemFactory f = new OsxRemoteFSElemFactory();        
         
 //        statfs("/", stat);
-        statbfs("/", bb);
+        f.statbfs("/");
 //        long b = stat.f_bsize;
 //        if (b == 0)
 //            b = stat.f_iosize;
-        long b = getLong(bb, 8) / 1024;
+        long b = f.getLong( 8) / 1024;
         if (b == 0)
-            b = getLong(bb, 8);
-        long iosize = getLong(bb, 16);
-        long blocks = getLong(bb, 24);
-        long bfree = getLong(bb, 40);
-        long bavail = getLong(bb, 48);
+            b = f.getLong( 8);
+        long iosize = f.getLong( 16);
+        long blocks = f.getLong( 24);
+        long bfree = f.getLong( 40);
+        long bavail = f.getLong( 48);
         
         
-        System.out.println( getFSType(bb) );  
-        System.out.println( getMntFrom(bb) );  
-        System.out.println( getMntTo(bb) ); 
+        System.out.println( f.getFSType() );
+        System.out.println( f.getMntFrom() );
+        System.out.println( f.getMntTo() );
         System.out.println( "Free: " + b*bfree ); 
         System.out.println( "Total: " + b*bavail );  
-        System.out.println( "Used: " + b*(bavail-bfree) );  
-        
-        
+        System.out.println( "Used: " + b*(bavail-bfree) );                  
+    }
+
+    
+    public String getFSname( String path )
+    {
+        statBuffer.rewind();
+        statbfs(path);
+        return getFSType();
     }
 
     @Override

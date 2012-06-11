@@ -369,5 +369,11 @@ public class WinRemoteFSElemFactory implements RemoteFSElemFactory
         
     }
 
+    @Override
+    public String getFsName( String path )
+    {
+        return LibKernel32.getFsName(path);
+    }
+
    
 }

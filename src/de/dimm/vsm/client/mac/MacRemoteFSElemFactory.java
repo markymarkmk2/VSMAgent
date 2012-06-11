@@ -278,7 +278,8 @@ public class MacRemoteFSElemFactory implements RemoteFSElemFactory
     }
 
     
-    public String getFSname( String path )
+    @Override
+    public String getFsName( String path )
     {
         statBuffer.rewind();
         statbfs(path);
@@ -578,6 +579,5 @@ public class MacRemoteFSElemFactory implements RemoteFSElemFactory
          
          return err;
      }
-     
-   
+        
 }

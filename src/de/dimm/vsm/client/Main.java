@@ -34,7 +34,7 @@ import org.apache.log4j.Level;
 public class Main
 {
 
-    private static String version = "0.8.0";
+    private static String version = "0.8.0 trunk";
     static Main me;
     private static boolean agent_tcp = true;
     String work_dir;

@@ -84,6 +84,9 @@ public class WinAgentApiTest {
     @Test
     public void testOpen_data() throws Exception
     {
+        String fs = instance.getFsFactory().getFsName("C:\\");
+        assertEquals("NTFS", fs);
+
         System.out.println("open_data");
         RemoteFSElem file = new RemoteFSElem("test.dat", null, 0, 0, 0, 0, 0);
         int flags = AgentApi.FL_RDWR | AgentApi.FL_CREATE;

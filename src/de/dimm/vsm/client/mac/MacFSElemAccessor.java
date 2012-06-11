@@ -44,8 +44,6 @@ class MacFileHandleData extends FileHandleData
         }
         return true;
     }
-
-
 }
 /**
  *

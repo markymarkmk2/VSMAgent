@@ -86,6 +86,12 @@ public abstract class NetAgentApi implements AgentApi
         return fsAcess;
     }
 
+    public RemoteFSElemFactory getFsFactory()
+    {
+        return factory;
+    }
+
+
     protected abstract void detectRsrcMode( File[] list );
     protected abstract boolean isRsrcEntry( File f );
 

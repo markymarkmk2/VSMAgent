@@ -13,6 +13,7 @@ import de.dimm.vsm.net.RemoteFSElem;
 import de.dimm.vsm.records.FileSystemElemNode;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileSystems;
 import java.util.HashMap;
 import org.jruby.ext.posix.FileStat;
 import org.jruby.ext.posix.Group;
@@ -275,6 +276,13 @@ public class NetatalkRemoteFSElemFactory implements RemoteFSElemFactory
             exc.printStackTrace();
         }
         return null;
+    }
+
+    @Override
+    public String getFsName( String path )
+    {
+        // TODO
+        return "zfs";
     }
    
 }

@@ -85,6 +85,10 @@ public class MacAgentApi extends NetAgentApi
         return (MacFSElemAccessor) fsAcess;
     }
 
+    void detectVolumeType(File f)
+    {
+        factory.getFsName(f.getPath());
+    }
     
     
 

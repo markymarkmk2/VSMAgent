@@ -16,6 +16,7 @@ public interface RemoteFSElemFactory {
 
     RemoteFSElem create_elem( File fh, boolean lazyAclInfo );
     public String readAclInfo( RemoteFSElem elem );
+    String getFsName( String path );
 
 
 }

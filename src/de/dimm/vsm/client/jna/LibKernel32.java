@@ -304,6 +304,32 @@ public class LibKernel32
     //public static native boolean CreateSymbolicLink( String lpSymlinkFileName, String lpTargetFileName, int dwFlags );
 
 
+    public static native boolean GetVolumeInformation(WString path, char[] lpVolumeNameBuffer, int nVolumeNameSize,
+            LongByReference lpVolumeSerialNumber,
+            LongByReference lpMaximumComponentLength,
+            LongByReference lpFileSystemFlags,
+            char[] lpFileSystemNameBuffer, int nFileSystemNameSize);
+
+
+
+    public static String getFsName( String path )
+    {
+        char[] lpVolumeNameBuffer = new char[256];
+        char[] lpFileSystemNameBuffer = new char[256];
+        LongByReference lpVolumeSerialNumber  = new LongByReference(0);
+        LongByReference lpMaximumComponentLength  = new LongByReference(0);
+        LongByReference lpFileSystemFlags  = new LongByReference(0);
+        WString p = new WString(path);
+        if (GetVolumeInformation( p, lpVolumeNameBuffer, lpVolumeNameBuffer.length, lpVolumeSerialNumber, lpMaximumComponentLength, lpFileSystemFlags,
+                lpFileSystemNameBuffer, lpFileSystemNameBuffer.length ))
+        {
+            int l = 0;
+            while (l < lpFileSystemNameBuffer.length - 1 && lpFileSystemNameBuffer[l] != 0)
+                l++;
+            return new String( lpFileSystemNameBuffer, 0, l );
+        }
+        return null;
+    }
 
     public static boolean is64BitOS()
     {

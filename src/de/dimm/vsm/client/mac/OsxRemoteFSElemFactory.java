@@ -5,10 +5,7 @@
 
 package de.dimm.vsm.client.mac;
 
-import com.sun.jna.Library;
-import com.sun.jna.Memory;
-import com.sun.jna.Native;
-import com.sun.jna.Structure;
+import com.sun.jna.*;
 import de.dimm.vsm.client.AttributeContainerImpl;
 import de.dimm.vsm.client.RemoteFSElemFactory;
 import de.dimm.vsm.client.jna.PosixWrapper;
@@ -34,6 +31,47 @@ import org.jruby.ext.posix.Passwd;
 public class OsxRemoteFSElemFactory implements RemoteFSElemFactory
 {
     ByteBuffer statBuffer = ByteBuffer.allocate(500);
+    
+    public static final int ATTR_CMN_NAME =                            0x00000001;
+    public static final int ATTR_CMN_DEVID =                           0x00000002;
+    public static final int ATTR_CMN_FSID =                            0x00000004;
+    public static final int ATTR_CMN_OBJTYPE =                         0x00000008;
+    public static final int ATTR_CMN_OBJTAG =                          0x00000010;
+    public static final int ATTR_CMN_OBJID =                           0x00000020;
+    public static final int ATTR_CMN_OBJPERMANENTID =                  0x00000040;
+    public static final int ATTR_CMN_PAROBJID =                        0x00000080;
+    public static final int ATTR_CMN_SCRIPT =                          0x00000100;
+    public static final int ATTR_CMN_CRTIME =                          0x00000200;
+    public static final int ATTR_CMN_MODTIME =                         0x00000400;
+    public static final int ATTR_CMN_CHGTIME =                         0x00000800;
+    public static final int ATTR_CMN_ACCTIME =                         0x00001000;
+    public static final int ATTR_CMN_BKUPTIME =                        0x00002000;
+    public static final int ATTR_CMN_FNDRINFO =                        0x00004000;
+    public static final int ATTR_CMN_OWNERID =                         0x00008000;
+    public static final int ATTR_CMN_GRPID =                           0x00010000;
+    public static final int ATTR_CMN_ACCESSMASK =                      0x00020000;
+    public static final int ATTR_CMN_FLAGS =                           0x00040000;
+/*  #define ATTR_CMN_NAMEDATTRCOUNT             0x00080000       not implemented */
+/*  #define ATTR_CMN_NAMEDATTRLIST              0x00100000       not implemented */
+    public static final int ATTR_CMN_USERACCESS =                      0x00200000;
+    public static final int ATTR_CMN_EXTENDED_SECURITY =               0x00400000;
+    public static final int ATTR_CMN_UUID =                            0x00800000;
+    public static final int ATTR_CMN_GRPUUID =                         0x01000000;
+    public static final int ATTR_CMN_FILEID =                          0x02000000;
+    public static final int ATTR_CMN_PARENTID =                        0x04000000;
+    public static final int ATTR_CMN_FULLPATH =                        0x08000000;
+    public static final int ATTR_CMN_ADDEDTIME =                       0x10000000;
+
+/*
+ * ATTR_CMN_RETURNED_ATTRS is only valid with getattrlist(2).
+ * It is always the first attribute in the return buffer.
+ */
+    public static final int ATTR_CMN_RETURNED_ATTRS =                  0x80000000;
+
+    public static final int ATTR_CMN_VALIDMASK =                       0x9FE7FFFF;
+    public static final int ATTR_CMN_SETMASK =                         0x01C7FF00;
+    public static final int TTR_CMN_VOLSETMASK =                       0x00006700;
+
 
     static public class StatStructure extends Structure
 {
@@ -55,6 +93,27 @@ public class OsxRemoteFSElemFactory implements RemoteFSElemFactory
 
     
     }
+    
+//    typedef u_int32_t attrgroup_t;
+
+     static public class Attrlist extends Structure  
+     {
+         
+         public short  bitmapcount; /* number of attr. bit sets in list */
+         public short   reserved;    /* (to maintain 4-byte alignment) */
+         public int  commonattr;  /* common attribute group */
+         public int   volattr;     /* volume attribute group */
+         public int   dirattr;     /* directory attribute group */
+         public int   fileattr;    /* file attribute group */
+         public int   forkattr;    /* fork attribute group */
+     };
+     public static final int ATTR_BIT_MAP_COUNT = 5;
+     
+     static public class Attrreference  extends Structure  
+     {
+         public int        attr_dataoffset;
+         public int      attr_length;
+     } 
 ///*
 // * struct statfs {
 //         short   f_otype;    /* type of file system (reserved: zero) */
@@ -80,6 +139,10 @@ public class OsxRemoteFSElemFactory implements RemoteFSElemFactory
 //     };
 // */
      
+     
+     
+     
+     
     String getTypFromStat(FileStat stat)
     {
         if (stat.isFile())
@@ -94,8 +157,14 @@ public class OsxRemoteFSElemFactory implements RemoteFSElemFactory
 
 
     private static StatInterface delegate = (StatInterface)Native.loadLibrary( "c", StatInterface.class);
+    private static P4 p4 = (P4) Native.loadLibrary( "P4", P4.class);
 
-
+    
+    interface P4 extends Library
+    {
+         int getRef( String s, FSRef r );
+         boolean IsFSRefValid( FSRef  ref);
+    }
 
     public static int stat(String path, StatStructure stat )
     {
@@ -106,6 +175,22 @@ public class OsxRemoteFSElemFactory implements RemoteFSElemFactory
     {
         return delegate.statfs( path, statBuffer  );
     }
+    
+    public boolean isReffable( String s )
+    {
+        Class cl = FSRef.class;
+        try {
+            FSRef ref = (FSRef) cl.newInstance();
+            
+            p4.getRef(s, ref);
+            
+            return p4.IsFSRefValid(ref);
+        } catch (Exception instantiationException) 
+        {
+            instantiationException.printStackTrace();
+        }
+        return false;
+   }
 
 
 
@@ -117,27 +202,39 @@ public class OsxRemoteFSElemFactory implements RemoteFSElemFactory
         int stat( String path, StatStructure stat );
       
         int statfs( String path, ByteBuffer bb);
+        int getattrlist(String path, Attrlist  attrList, ByteBuffer attrBuf, int attrBufSize, long options);
     }
+    
+    
      String getFSType( )
     {
         byte[] b = new byte[15];
         byte[] arr = statBuffer.array();
         System.arraycopy(arr, 104, b, 0,  b.length);
-        return new String(b);
+        int l = 0;
+        while (l < b.length - 1 && b[l]!= 0)
+            l++;
+        return new String(b, 0, l);
     }
-     String getMntFrom()
+     String getMntTo()
     {
         byte[] b = new byte[90];
         byte[] arr = statBuffer.array();
         System.arraycopy(arr, 119, b, 0,  b.length);
-        return new String(b);
+        int l = 0;
+        while (l < b.length - 1 && b[l]!= 0)
+            l++;
+        return new String(b, 0, l);
     }
-     String getMntTo()
+     String getMntFrom()
     {
         byte[] b = new byte[255];
         byte[] arr = statBuffer.array();
         System.arraycopy(arr, 209, b, 0,  b.length);
-        return new String(b);
+        int l = 0;
+        while (l < b.length - 1 && b[l]!= 0)
+            l++;
+        return new String(b, 0, l);
     }
      long getLong( int offset)
     {
@@ -424,7 +521,62 @@ public class OsxRemoteFSElemFactory implements RemoteFSElemFactory
         }
         return null;
     }
+     
+//    struct FInfoAttrBuf {
+//         u_int32_t       length;
+//         fsobj_type_t    objType;
+//         char            finderInfo[32];
+//     }  __attribute__((aligned(4), packed));
+
+     ByteBuffer allocByteBuffer( int len)
+     {
+         ByteBuffer  buff = ByteBuffer.allocate(len);
+         buff.order(ByteOrder.LITTLE_ENDIAN);
+         if (System.getProperty("os.arch").startsWith("ppc"))
+         {
+             buff.order(ByteOrder.BIG_ENDIAN);
+         }
+         
+         return buff;
+     }
 
 
+     public int FInfoDemo(String path)
+     {
+         int             err;
+         Attrlist      attrList = new Attrlist();
+         ByteBuffer  buff = allocByteBuffer(4096);
+             
+
+         
+         attrList.bitmapcount = ATTR_BIT_MAP_COUNT;
+         attrList.commonattr  = ATTR_CMN_OBJTYPE | ATTR_CMN_FNDRINFO;
+
+         err = delegate.getattrlist(path, attrList, buff, buff.limit(), 0);
+
+         if (err == 0) 
+         {
+
+             System.out.println("Finder information for " +  path);
+             
+             int length = buff.getInt(0);
+             int objType = buff.getInt(4);
+
+             byte[] arr = buff.array();
+             String type = new String( arr, 8, 4 );
+             String creator = new String( arr, 12, 4 );
+             System.out.println("Object type " +  objType);
+             System.out.println("Type / creator " +  type + " " + creator);
+             
+         }
+         
+         File fr = new File(path + "/..namedfork/rsrc");
+         long rlen = fr.length();
+         File fd = new File(path);
+         long dlen = fd.length();
+         System.out.println("Datafork: " + dlen + " RsrcFork: " + rlen );
+         
+         return err;
+     }
    
 }

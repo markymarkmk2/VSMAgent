@@ -5,11 +5,7 @@
 
 package de.dimm.vsm.client.jna;
 
-import com.sun.jna.Library;
-import com.sun.jna.Native;
-import com.sun.jna.Platform;
-import com.sun.jna.Pointer;
-import com.sun.jna.Structure;
+import com.sun.jna.*;
 import com.sun.jna.ptr.IntByReference;
 import java.nio.ByteBuffer;
 
@@ -118,6 +114,8 @@ public class VSMLibC
 //
 //        Native.register(nl);
 //    }
+
+    
 
     public static int stat(String path, FileStat stat)
     {

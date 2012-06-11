@@ -95,7 +95,7 @@ public class MacFSElemAccessor extends FSElemAccessor
     public RemoteFSElemWrapper open_xa_handle( RemoteFSElem elem, int flags )
     {
         RandomAccessFile fh = null;
-        String path = OsxRemoteFSElemFactory.getADPath( elem.getPath() );
+        String path = MacRemoteFSElemFactory.getADPath( elem.getPath() );
         try
         {
             if (flags == AgentApi.FL_RDONLY)

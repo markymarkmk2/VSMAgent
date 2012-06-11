@@ -28,7 +28,7 @@ import org.jruby.ext.posix.Passwd;
  *
  * @author Administrator
  */
-public class OsxRemoteFSElemFactory implements RemoteFSElemFactory
+public class MacRemoteFSElemFactory implements RemoteFSElemFactory
 {
     ByteBuffer statBuffer = ByteBuffer.allocate(500);
     
@@ -253,7 +253,7 @@ public class OsxRemoteFSElemFactory implements RemoteFSElemFactory
 
     public static void main( String[] args)
     {
-        OsxRemoteFSElemFactory f = new OsxRemoteFSElemFactory();        
+        MacRemoteFSElemFactory f = new MacRemoteFSElemFactory();        
         
 //        statfs("/", stat);
         f.statbfs("/");
@@ -442,7 +442,7 @@ public class OsxRemoteFSElemFactory implements RemoteFSElemFactory
     }
     static void speed_test( File f  )
     {
-        RemoteFSElemFactory factory = new OsxRemoteFSElemFactory();
+        RemoteFSElemFactory factory = new MacRemoteFSElemFactory();
         RemoteFSElem elem = factory.create_elem(f, false);
         if (elem.isDirectory())
         {

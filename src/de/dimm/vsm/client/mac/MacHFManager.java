@@ -15,7 +15,7 @@ public class MacHFManager extends HFManager
 {
     public MacHFManager()
     {
-        factory = new OsxRemoteFSElemFactory();
+        factory = new MacRemoteFSElemFactory();
     }
 
 }

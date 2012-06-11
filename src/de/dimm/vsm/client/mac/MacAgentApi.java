@@ -75,7 +75,7 @@ public class MacAgentApi extends NetAgentApi
 
        
         //if ()
-        factory = new OsxRemoteFSElemFactory();
+        factory = new MacRemoteFSElemFactory();
         this.cdpIpFilter = cdpIpFilter;
         
     }

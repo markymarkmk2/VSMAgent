@@ -156,35 +156,97 @@ public class AttributeContainerImpl
 
         return set( file, ac );
     }
+    static HashMap<String, String> builtinTranslastionMapg2e;
+    static HashMap<String, String> builtinTranslastionMape2g;
+
+    // THIS IS JUST A HACK TO TRY TO RESOLVE DIFFERENT BUILTIN NAMES ON DIFFERENT LOCALIZATIONS
+    // THIS IS ABSOLUTE FUCKING STUPID OF MS... NO WAY TO RESOLVE THIS ISSUE FROM INSIDE JAVA
+    static private void addToMaps( String e, String g)
+    {
+        builtinTranslastionMapg2e.put(g.toLowerCase(), e);
+        builtinTranslastionMape2g.put(e.toLowerCase(), g);
+    }
+    static
+    {
+        builtinTranslastionMapg2e = new HashMap<String, String>();
+        builtinTranslastionMape2g = new HashMap<String, String>();
+
+        addToMaps( "BUILTIN\\ADMINISTRATORS", "VORDEFINIERT\\Administratoren");
+        addToMaps( "BUILTIN\\USERS", "VORDEFINIERT\\Benutzer");
+        addToMaps( "BUILTIN\\GUESTS", "VORDEFINIERT\\Gäste");
+        addToMaps( "NT AUTHORITY\\SYSTEM", "NT-AUTORITÄT\\SYSTEM");
+        addToMaps( "NT AUTHORITY\\authenticated users", "NT-AUTORITÄT\\Authentifizierte Benutzer");
+        addToMaps( "NT AUTHORITY\\LOCAL SERVICE", "NT-AUTORITÄT\\LOKALER DIENST");
+    }
+
+    static private String mapPrincipal( String p, boolean systemIsGerman )
+    {
+        String ret = p;
+        if (systemIsGerman)
+        {
+            String r = builtinTranslastionMape2g.get( p.toLowerCase() );
+            if (r != null)
+                ret = r;
+        }
+        else
+        {
+            String r = builtinTranslastionMapg2e.get( p.toLowerCase() );
+            if (r != null)
+                ret = r;
+        }
+
+        return ret;
+    }
+
 
     public static boolean set(Path file, AttributeContainer ac )
     {
         // TODO: HANDLE CROSS PLATFORM RESTORE
 
 
+
         AclFileAttributeView view = Files.getFileAttributeView(file, AclFileAttributeView.class);
         if (view != null)
         {
+            // IN CASE OF ERROR WE SKIP SETTING ACL, WE COULD END UP IN A NON-ACCESSIBLE FILE/DIR
+            boolean skipWrite = false;
             try
             {
                 UserPrincipalLookupService usv = FileSystems.getDefault().getUserPrincipalLookupService();
 
+                boolean systemIsGerman = false;
 
                 try
                 {
-                    UserPrincipal owner = usv.lookupPrincipalByName(ac.getUserName());
+                    UserPrincipal test = usv.lookupPrincipalByName("");
+                    if (test != null && test.getName().startsWith("VORDEFINIERT"))
+                    {
+                        systemIsGerman = true;
+                    }
+                }
+                catch (IOException iOException)
+                {
+                }
+
+                
+                String name = mapPrincipal( ac.getUserName(), systemIsGerman );
+                try
+                {
+                    UserPrincipal owner = usv.lookupPrincipalByName(name);
                     view.setOwner(owner);
                 }
                 catch(UserPrincipalNotFoundException exc )
                 {
                     System.out.println("Unknown owner " + ac.getUserName() + " for " + file.toString());
+                    skipWrite = true;
                 }
                 catch (IOException iOException)
                 {
                     System.out.println("Error setting User " + ac.getUserName() + " for " + file.toString() + ": " + iOException.getMessage());
+                    skipWrite = true;
                 }
                 List<VSMAclEntry> acl =ac.getAcl();
-                List<AclEntry> realAcls = new ArrayList<AclEntry>();
+                List<AclEntry> realAcls = new ArrayList<AclEntry>(view.getAcl());
 
 
                 for (int i = 0; i < acl.size(); i++)
@@ -203,23 +265,26 @@ public class AttributeContainerImpl
 
 
 
+                    name = mapPrincipal( aclEntry.principalName(), systemIsGerman );
                     try
                     {
                         UserPrincipal aclOwner = null;
+                        
                         // TODO: HASH OR EHCACHE
                         if (aclEntry.isGroup())
                         {
-                            aclOwner = usv.lookupPrincipalByGroupName(aclEntry.principalName());
+                            aclOwner = usv.lookupPrincipalByGroupName(name);
                         }
                         else
                         {
-                            aclOwner = usv.lookupPrincipalByName(aclEntry.principalName());
+                            aclOwner = usv.lookupPrincipalByName(name);
                         }
                         bacl.setPrincipal(aclOwner);
                     }
                     catch(UserPrincipalNotFoundException exc )
                     {
                         System.out.println("Skipping unknown user " + ac.getUserName() + " for " + file.toString());
+                        skipWrite = true;
 
                         // WITHOUT OWNER WE CANNOT SET ACL
                         continue;
@@ -227,6 +292,7 @@ public class AttributeContainerImpl
                     catch (IOException iOException)
                     {
                         System.out.println("Error setting AclOwner " + ac.getUserName() + " for " + file.toString() + ": " + iOException.getMessage());
+                        skipWrite = true;
 
                         // WITHOUT OWNER WE CANNOT SET ACL
                         continue;
@@ -238,7 +304,10 @@ public class AttributeContainerImpl
                     realAcls.add(entry);
                 }
 
-                view.setAcl(realAcls);
+                if (!skipWrite)
+                {
+                    view.setAcl(realAcls);
+                }
             }
             catch (Exception iOException)
             {

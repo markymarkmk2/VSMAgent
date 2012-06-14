@@ -553,9 +553,11 @@ public abstract class NetAgentApi implements AgentApi
             e.printStackTrace();
         }
 
+        boolean useFuse = !Main.is_win();
+
         try
         {
-            fs = MountVSMFS.mount_vsmfs(addr, port, poolWrapper/*, timestamp, subPath, user*/, drive, true);
+            fs = MountVSMFS.mount_vsmfs(addr, port, poolWrapper/*, timestamp, subPath, user*/, drive, useFuse);
 
             mountMap.put(poolWrapper.getPoolIdx(), fs);
             return true;

@@ -508,12 +508,21 @@ public class WinAgentApi extends NetAgentApi
     @Override
     public boolean set_attributes( RemoteFSElemWrapper wrapper )
     {
+        boolean ret = true;
+
         RemoteFSElem elem = fsAcess.get_handleData(wrapper).getElem();
 
-        fsAcess.setAttributes( elem);
+        try
+        {
+            fsAcess.setAttributes(elem);
+        }
+        catch (IOException iOException)
+        {
+            ret = false;
+        }
         set_filetimes( wrapper );
 
-        return true;
+        return ret;
     }
 
 

@@ -474,12 +474,20 @@ public class UnixAgentApi extends NetAgentApi
     @Override
     public boolean set_attributes( RemoteFSElemWrapper wrapper )
     {
+        boolean ret = true;
         RemoteFSElem elem = fsAcess.get_handleData(wrapper).getElem();
 
-        getNativeAccesor().setAttributes( elem);
+        try
+        {
+            getNativeAccesor().setAttributes(elem);
+        }
+        catch (IOException iOException)
+        {
+            ret = false;
+        }
         getNativeAccesor().setFiletime(elem.getPath(), elem);
 
-        return true;
+        return ret;
     }
 
 

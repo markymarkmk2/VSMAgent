@@ -5,11 +5,10 @@
 package de.dimm.vsm.client.mac;
 
 import de.dimm.vsm.client.unix.*;
-import com.sun.jna.Pointer;
-import com.sun.jna.ptr.IntByReference;
+import com.thoughtworks.xstream.XStream;
 import de.dimm.vsm.Utilities.CryptTools;
+import de.dimm.vsm.Utilities.ZipUtilities;
 import de.dimm.vsm.client.AttributeContainerImpl;
-import de.dimm.vsm.client.Main;
 import de.dimm.vsm.client.NetAgentApi;
 import de.dimm.vsm.client.cdp.CDP_Param;
 import de.dimm.vsm.client.cdp.CdpHandler;
@@ -18,10 +17,8 @@ import de.dimm.vsm.client.cdp.FCEEventSource;
 import de.dimm.vsm.client.cdp.PlatformData;
 import de.dimm.vsm.client.cdp.fce.VSMCDPEventProcessor;
 import de.dimm.vsm.client.cdp.fce.VSMFCEEventSource;
-import de.dimm.vsm.client.jna.VSMLibC;
 import de.dimm.vsm.hash.HashFunctionPool;
 import de.dimm.vsm.net.AttributeContainer;
-import de.dimm.vsm.net.AttributeEntry;
 import de.dimm.vsm.net.AttributeList;
 import de.dimm.vsm.net.CdpTicket;
 import de.dimm.vsm.net.interfaces.AgentApi;
@@ -35,10 +32,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.net.InetAddress;
 import java.net.SocketException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.Properties;
-import org.apache.commons.codec.binary.Base64;
 
 
 /**
@@ -48,17 +42,6 @@ import org.apache.commons.codec.binary.Base64;
 public class MacAgentApi extends NetAgentApi
 {
 
-    public static final int RSRC_NETATALK = 1;
-    public static final int RSRC_ES = 2;
-    public static final int RSRC_XINET = 3;
-    public static final int RSRC_USCORE = 4;
-    public static final String NETATALK_RSRCDIR = ".AppleDouble";
-    public static final String ES_RSRCDIR = ".rsrc";
-    public static final String XINET_RSRCDIR = ".HSResource";
-    
-    //UnixFSElemAccessor fsAcess;
-    
-    private int rsrcMode;
     String cdpIpFilter = null;
    
    
@@ -72,6 +55,8 @@ public class MacAgentApi extends NetAgentApi
         options = new Properties();
 
         hfManager = new MacHFManager();
+
+        rsrcMode = RSRC_HFS;
 
        
         //if ()
@@ -88,6 +73,7 @@ public class MacAgentApi extends NetAgentApi
     void detectVolumeType(File f)
     {
         factory.getFsName(f.getPath());
+
     }
     
     
@@ -95,6 +81,9 @@ public class MacAgentApi extends NetAgentApi
     @Override
     protected void detectRsrcMode( File[] list )
     {
+        if (rsrcMode == RSRC_HFS)
+            return;
+
         for (int i = 0; i < list.length; i++)
         {
             File file = list[i];
@@ -121,6 +110,9 @@ public class MacAgentApi extends NetAgentApi
     @Override
     protected boolean isRsrcEntry( File f )
     {
+        if (rsrcMode == RSRC_HFS)
+            return false;
+
         switch (rsrcMode)
         {
             case RSRC_USCORE:
@@ -368,95 +360,20 @@ public class MacAgentApi extends NetAgentApi
     @Override
     public AttributeList get_attributes( RemoteFSElem elem )
     {
-        AttributeList list = new AttributeList();
-
-        // TODO SOLARIS 11 HAS NO POSIX ACL ANYMORE
-        if (Main.is_solaris())
-            return list;
-
-        String path = elem.getPath();
-
         try
         {
-            ByteBuffer buff = ByteBuffer.allocate(4096);
-            int len = VSMLibC.CLibrary.INSTANCE.listxattr(path, buff, buff.capacity());
+            AttributeList list = getNativeAccesor().get_attributes(elem);
 
-            byte[] arr = new byte[len];
-            buff.get(arr, 0, len);
-            String[] names = nulltermList2Array(arr);
-
-            for (int i = 0; i < names.length; i++)
-            {
-                String name = names[i];
-                byte[] data = null;
-                if (name.equals("system.posix_acl_access") || name.equals("system.posix_acl_default"))
-                {
-                    Pointer acl = VSMLibC.ACLLibrary.INSTANCE.acl_get_file(path, VSMLibC.ACL_TYPE_ACCESS);
-                    IntByReference acl_len = new IntByReference(0);
-                    Pointer text = VSMLibC.ACLLibrary.INSTANCE.acl_to_text(acl, acl_len);
-
-                    String s = text.getString(0);
-
-                    VSMLibC.ACLLibrary.INSTANCE.acl_free(text);
-                    VSMLibC.ACLLibrary.INSTANCE.acl_free(acl);
-
-                    // STRING
-                    data = s.getBytes();
-                }
-                else
-                {
-                    buff.rewind();
-                    len = VSMLibC.getxattr(path, name, buff, buff.capacity());
-                    data = new byte[len];
-                    buff.get(data, 0, len);
-                    // CONVERT TO STRING
-                    data = Base64.decodeBase64(data);
-                }
-                AttributeEntry entry = new AttributeEntry(name, data);
-                list.getList().add(entry);
-            }
+            return list;
         }
         catch (Exception e)
         {
-            System.out.println("Exception during get_attributes of " + path + ": " + e.getMessage());
+            System.out.println("Exception during get_attributes of " + elem.getPath() + ": " + e.getMessage());
             return null;
         }
-        return list;
+        
     }
 
-    private String[] nulltermList2Array( byte[] arr )
-    {
-        if (arr.length == 0)
-        {
-            return new String[0];
-        }
-
-        ArrayList<String> l = new ArrayList<String>();
-
-        int start = 0;
-        int end = 0;
-
-        while (true)
-        {
-            end++;
-            if (end == arr.length)
-            {
-                if (end - start > 1)
-                {
-                    l.add(new String(arr, start, end - start - 1));
-                }
-
-                break;
-            }
-            else if (arr[end] == 0)
-            {
-                l.add(new String(arr, start, end));
-
-                start = end + 1;
-            }
-        }
-        return l.toArray(new String[0]);
-    }
 
     @Override
     public boolean set_filetimes_named( RemoteFSElem elem )
@@ -478,21 +395,31 @@ public class MacAgentApi extends NetAgentApi
     @Override
     public boolean set_attributes( RemoteFSElemWrapper wrapper )
     {
+        boolean ret = true;
         RemoteFSElem elem = fsAcess.get_handleData(wrapper).getElem();
 
-        getNativeAccesor().setAttributes( elem);
+        try
+        {
+            fsAcess.setAttributes(elem);
+        }
+        catch (IOException iOException)
+        {
+            ret = false;
+        }
         getNativeAccesor().setFiletime(elem.getPath(), elem);
 
-        return true;
+        return ret;
     }
 
-
-
-
+   
     @Override
     public String readAclInfo( RemoteFSElem dir )
     {
-        return factory.readAclInfo(dir);
+        AttributeList attrs = get_attributes(dir);
+
+        XStream xs = new XStream();
+        String s = ZipUtilities.compress(xs.toXML(attrs));
+        return s;
     }
 
 

@@ -33,7 +33,8 @@ import org.apache.log4j.Level;
 public class Main
 {
 
-    private static String version = "0.8.0 trunk";
+    static String source_str = "trunk";
+    static String version = "0.8.1";
     static Main me;
     private static boolean agent_tcp = true;
     String work_dir;
@@ -88,7 +89,7 @@ public class Main
             System.out.println("Cannot set java.library.path to user dir");
         }
 
-        System.out.println("VSMAgent V" + version);
+        System.out.println("VSMAgent V" + version + " " + source_str);
 
         print_system_property("java.version");
         print_system_property("java.vendor");
@@ -186,6 +187,7 @@ public class Main
     {
         //NetServer agent_net_server = null;
 
+        //DokanVSMFS.test();
 
         int port = 8082;
         
@@ -202,7 +204,7 @@ public class Main
             }
             if (string.equals("-version"))
             {
-                System.out.println(get_version());
+                System.out.println(Main.version);
                 System.exit(0);
             }
             if (string.equals("-p") && (i + 1) <  args.length)
@@ -435,7 +437,7 @@ public class Main
 
     public static String get_version()
     {
-        return version;
+        return version + " " + source_str;
     }
 
     public static boolean is_win()

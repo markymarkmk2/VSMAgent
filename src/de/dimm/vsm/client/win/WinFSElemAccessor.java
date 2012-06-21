@@ -20,7 +20,6 @@ import de.dimm.vsm.net.RemoteFSElem;
 import de.dimm.vsm.net.RemoteFSElemWrapper;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 
 
@@ -115,6 +114,7 @@ class WinFileHandleData extends FileHandleData
         return LibKernel32.CloseHandle(handle);
     }
 
+    @Override
     public RemoteFSElem getElem()
     {
         return elem;
@@ -218,14 +218,14 @@ class WinFileHandleData extends FileHandleData
  */
 public class WinFSElemAccessor extends FSElemAccessor
 {
-    HashMap<Long,WinFileHandleData> hash_map;
+    //HashMap<Long,WinFileHandleData> hash_map;
 
     static long newHandleValue = 1;
 
     public WinFSElemAccessor( NetAgentApi api)
     {
         super(api);
-        hash_map = new HashMap<Long, WinFileHandleData>();
+//        hash_map = new HashMap<Long, WinFileHandleData>();
     }
 
 
@@ -271,6 +271,7 @@ public class WinFSElemAccessor extends FSElemAccessor
         LibKernel32.CloseHandle(h);
     }
 
+    @Override
     public RemoteFSElemWrapper open_handle( RemoteFSElem elem, int flags )
     {
         HANDLE h = open_raw_handle( elem, flags );
@@ -287,6 +288,7 @@ public class WinFSElemAccessor extends FSElemAccessor
         return wrapper;
     }
 
+    @Override
     public RemoteFSElemWrapper open_xa_handle( RemoteFSElem elem, int flags )
     {
         WString path = null;
@@ -334,7 +336,7 @@ public class WinFSElemAccessor extends FSElemAccessor
 
         super.close_handle(wrapper);
 
-        WinFileHandleData data = hash_map.remove(wrapper.getHandle());
+        WinFileHandleData data = (WinFileHandleData) hash_map.remove(wrapper.getHandle());
         if (data == null)
             return false;
 
@@ -343,7 +345,7 @@ public class WinFSElemAccessor extends FSElemAccessor
 
     public HANDLE get_handle( RemoteFSElemWrapper wrapper)
     {
-        WinFileHandleData data = hash_map.get(wrapper.getHandle());
+        WinFileHandleData data = (WinFileHandleData) hash_map.get(wrapper.getHandle());
         if (data == null)
             return null;
 
@@ -370,6 +372,7 @@ public class WinFSElemAccessor extends FSElemAccessor
     }
     
     
+    @Override
     public boolean createSymlink( String path, String linkPath )
     {
         return false;

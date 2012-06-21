@@ -87,6 +87,7 @@ public class VSMLibC
 
         
         public Pointer acl_get_file(String name, int type);
+        public int acl_set_file(String name, int type, Pointer acl);
         public Pointer acl_to_text( Pointer acl, IntByReference len );
         public Pointer acl_from_text(String acl_text);
         public int acl_free(Pointer acl);

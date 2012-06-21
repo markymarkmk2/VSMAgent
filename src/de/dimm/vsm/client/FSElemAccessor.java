@@ -112,7 +112,7 @@ public abstract class FSElemAccessor
     {
         return (flags & flag) == flag;
     }
-    public void setAttributes( RemoteFSElem dir )
+    public void setAttributes( RemoteFSElem dir ) throws IOException
     {
         if (dir.getAclinfoData() != null)
         {

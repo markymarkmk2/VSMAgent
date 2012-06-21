@@ -60,6 +60,20 @@ class FileComparator implements Comparator<File>
  */
 public abstract class NetAgentApi implements AgentApi
 {
+    public static final int RSRC_NETATALK = 1;
+    public static final int RSRC_ES = 2;
+    public static final int RSRC_XINET = 3;
+    public static final int RSRC_USCORE = 4;
+    public static final int RSRC_HFS = 5;
+    
+    public static final String NETATALK_RSRCDIR = ".AppleDouble";
+    public static final String ES_RSRCDIR = ".rsrc";
+    public static final String XINET_RSRCDIR = ".HSResource";
+
+    //UnixFSElemAccessor fsAcess;
+
+    protected int rsrcMode;
+
 
     protected HashFunctionPool hash_pool;
     protected Properties options;

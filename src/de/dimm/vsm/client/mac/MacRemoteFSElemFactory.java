@@ -203,6 +203,7 @@ public class MacRemoteFSElemFactory implements RemoteFSElemFactory
       
         int statfs( String path, ByteBuffer bb);
         int getattrlist(String path, Attrlist  attrList, ByteBuffer attrBuf, int attrBufSize, long options);
+        int setattrlist(String path, Attrlist  attrList, ByteBuffer attrBuf, int attrBufSize, long options);
     }
     
     
@@ -355,6 +356,7 @@ public class MacRemoteFSElemFactory implements RemoteFSElemFactory
             if (lazyAclInfo)
             {
                 elem.setAclinfoData(RemoteFSElem.LAZY_ACLINFO);
+                elem.setAclinfo(RemoteFSElem.ACLINFO_OSX);
             }
             else
             {
@@ -386,14 +388,9 @@ public class MacRemoteFSElemFactory implements RemoteFSElemFactory
         return elem;
     }
     
-    static String getADPath( String path )
+    static String getRsrcPath( String path )
     {
-        StringBuilder sb = new StringBuilder(path);
-        int fidx = sb.lastIndexOf(File.separator);
-        if (fidx > 0)
-            sb.insert(fidx, "/.AppleDouble");
-        
-        return sb.toString();
+        return path + "/..namedfork/rsrc";
     }
 
 
@@ -409,7 +406,7 @@ public class MacRemoteFSElemFactory implements RemoteFSElemFactory
     
     public static long evalStreamLen( File fh )
     {
-        String adpPath = getADPath( fh.getAbsolutePath() );
+        String adpPath = getRsrcPath( fh.getAbsolutePath() );
 
         File f = new File(adpPath);
 
@@ -512,7 +509,7 @@ public class MacRemoteFSElemFactory implements RemoteFSElemFactory
                     putHashMap( hash, aclStream );
                 }
                 elem.setAclinfoData(aclStream);
-                elem.setAclinfo(RemoteFSElem.ACLINFO_WIN);
+                elem.setAclinfo(RemoteFSElem.ACLINFO_OSX);
                 return aclStream;
             }
         }
@@ -529,7 +526,7 @@ public class MacRemoteFSElemFactory implements RemoteFSElemFactory
 //         char            finderInfo[32];
 //     }  __attribute__((aligned(4), packed));
 
-     ByteBuffer allocByteBuffer( int len)
+     public static ByteBuffer allocByteBuffer( int len)
      {
          ByteBuffer  buff = ByteBuffer.allocate(len);
          buff.order(ByteOrder.LITTLE_ENDIAN);
@@ -540,6 +537,15 @@ public class MacRemoteFSElemFactory implements RemoteFSElemFactory
          
          return buff;
      }
+
+    public static int getattrlist(String path, Attrlist  attrList, ByteBuffer attrBuf, int attrBufSize, long options)
+    {
+         return delegate.getattrlist(path, attrList, attrBuf, attrBufSize, options);
+    }
+    public static int setattrlist(String path, Attrlist  attrList, ByteBuffer attrBuf, int attrBufSize, long options)
+    {
+         return delegate.setattrlist(path, attrList, attrBuf, attrBufSize, options);
+    }
 
 
      public int FInfoDemo(String path)

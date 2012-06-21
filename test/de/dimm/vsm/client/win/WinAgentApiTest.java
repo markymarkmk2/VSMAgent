@@ -404,8 +404,8 @@ public class WinAgentApiTest {
 
         try
         {
-            RemoteFSElemWrapper oh = instance.open_data(origelem, flags);
-            RemoteFSElemWrapper rh = instance.open_data(restoreelem, flags);
+            RemoteFSElemWrapper oh = instance.open_stream_data(origelem, flags);
+            RemoteFSElemWrapper rh = instance.open_stream_data(restoreelem, flags);
 
             WinFileHandleData odata = (WinFileHandleData)instance.getNativeAccesor().get_handleData(oh);
             WinFileHandleData rdata = (WinFileHandleData)instance.getNativeAccesor().get_handleData(rh);

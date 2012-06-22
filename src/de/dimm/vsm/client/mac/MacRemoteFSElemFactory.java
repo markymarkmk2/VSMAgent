@@ -294,6 +294,10 @@ public class MacRemoteFSElemFactory implements RemoteFSElemFactory
     @Override
     public synchronized  RemoteFSElem create_elem( File fh, boolean lazyAclInfo )
     {
+        String path = fh.getAbsolutePath();
+        path = AccentComposer.composeAccents(path);
+        
+
         String typ = fh.isDirectory() ? FileSystemElemNode.FT_DIR : FileSystemElemNode.FT_FILE;
 
         long len = get_flen( fh );
@@ -306,7 +310,7 @@ public class MacRemoteFSElemFactory implements RemoteFSElemFactory
         int ret = -1;
         try
         {
-            stat = posix.stat(fh.getAbsolutePath() );
+            stat = posix.stat(path);
         }
         catch (Exception e)
         {
@@ -327,7 +331,7 @@ public class MacRemoteFSElemFactory implements RemoteFSElemFactory
             if (pw != null)
                 uidName = pw.getLoginName();
             
-            elem = new RemoteFSElem( fh.getAbsolutePath(), typ,
+            elem = new RemoteFSElem( path, typ,
                     stat.mtime() * 1000, stat.ctime() * 1000, stat.atime() * 1000,
                     len, streamLen );
 
@@ -337,7 +341,7 @@ public class MacRemoteFSElemFactory implements RemoteFSElemFactory
             {
                 try
                 {
-                    String rl = posix.readlink(fh.getAbsolutePath());
+                    String rl = posix.readlink(path);
                     elem.setLinkPath(rl);
                 }
                 catch (IOException iOException)
@@ -348,7 +352,7 @@ public class MacRemoteFSElemFactory implements RemoteFSElemFactory
         }
         else
         {
-            elem = new RemoteFSElem( fh.getAbsolutePath(), typ,
+            elem = new RemoteFSElem( path, typ,
                     fh.lastModified(), fh.lastModified(), fh.lastModified(),
                     len, streamLen );
         }

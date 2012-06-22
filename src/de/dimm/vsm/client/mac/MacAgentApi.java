@@ -32,8 +32,31 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.net.InetAddress;
 import java.net.SocketException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Properties;
 
+
+class FileComparator implements Comparator<File>
+{
+
+  @Override
+  public int compare(File b1, File b2)
+  {
+      if (b1.isDirectory())
+      {
+          if (!b2.isDirectory())
+              return 1;
+      }
+      else
+      {
+          if (b2.isDirectory())
+              return -1;
+      }
+      return b1.getName().compareToIgnoreCase(b2.getName());
+  }
+}
 
 /**
  *
@@ -43,8 +66,46 @@ public class MacAgentApi extends NetAgentApi
 {
 
     String cdpIpFilter = null;
-   
-   
+
+    @Override
+    public ArrayList<RemoteFSElem> list_dir( RemoteFSElem dir, boolean lazyAclInfo )
+    {
+
+        File fh = new File(dir.getPath());
+        File[] files = fh.listFiles();
+
+
+        ArrayList<RemoteFSElem> list = new ArrayList<RemoteFSElem>();
+        if (files == null)
+        {
+            System.out.println("No files for " + dir.getPath());
+            return list;
+        }
+        detectRsrcMode(files);
+
+        Arrays.sort(files, new FileComparator());
+
+
+        for (int i = 0; i < files.length; i++)
+        {
+            File file = files[i];
+
+            // TODO: SWITCH DEPENDING ON ACTUAL FS
+
+            if (isRsrcEntry(file))
+            {
+                continue;
+            }
+
+            //if ()
+            RemoteFSElem elem = factory.create_elem(file, lazyAclInfo);
+
+            list.add(elem);
+        }
+        return list;
+    }
+
+
 
     public MacAgentApi( HashFunctionPool hash_pool, String cdpIpFilter )
     {

@@ -6,14 +6,14 @@
 package de.dimm.vsm.client.mac;
 
 import com.sun.jna.*;
+import com.thoughtworks.xstream.XStream;
 import de.dimm.vsm.client.AttributeContainerImpl;
 import de.dimm.vsm.client.RemoteFSElemFactory;
 import de.dimm.vsm.client.jna.PosixWrapper;
 import de.dimm.vsm.net.AttributeContainer;
 import de.dimm.vsm.net.RemoteFSElem;
 import de.dimm.vsm.records.FileSystemElemNode;
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.HashMap;
@@ -72,6 +72,10 @@ public class MacRemoteFSElemFactory implements RemoteFSElemFactory
     public static final int ATTR_CMN_SETMASK =                         0x01C7FF00;
     public static final int TTR_CMN_VOLSETMASK =                       0x00006700;
 
+    
+    public static final int FSOPT_NOFOLLOW =                           0x00000001;
+    public static final int FSOPT_NOINMEMUPDATE =                      0x00000002;
+    public static final int FSOPT_REPORT_FULLSIZE =                    0x00000004;
 
     static public class StatStructure extends Structure
 {
@@ -203,7 +207,7 @@ public class MacRemoteFSElemFactory implements RemoteFSElemFactory
       
         int statfs( String path, ByteBuffer bb);
         int getattrlist(String path, Attrlist  attrList, ByteBuffer attrBuf, int attrBufSize, long options);
-        int setattrlist(String path, Attrlist  attrList, ByteBuffer attrBuf, int attrBufSize, long options);
+        int setattrlist(String path, Attrlist  attrList, byte[] attrBuf, int attrBufSize, long options);
     }
     
     
@@ -495,29 +499,7 @@ public class MacRemoteFSElemFactory implements RemoteFSElemFactory
      @Override
     public synchronized  String readAclInfo( RemoteFSElem elem )
     {
-        try
-        {
-            AttributeContainer info = new AttributeContainer();
-
-            if (AttributeContainerImpl.fill( elem, info ))
-            {
-                int hash = info.hashCode();
-                String aclStream = getHashMap(hash);
-                if (aclStream == null)
-                {
-                    aclStream = AttributeContainer.serialize(info);
-                    putHashMap( hash, aclStream );
-                }
-                elem.setAclinfoData(aclStream);
-                elem.setAclinfo(RemoteFSElem.ACLINFO_OSX);
-                return aclStream;
-            }
-        }
-        catch (Exception exc)
-        {
-            exc.printStackTrace();
-        }
-        return null;
+        throw new RuntimeException("Should not be called");
     }
      
 //    struct FInfoAttrBuf {
@@ -537,12 +519,134 @@ public class MacRemoteFSElemFactory implements RemoteFSElemFactory
          
          return buff;
      }
+     
+         
+         public ByteBuffer readFromFs(String path)
+         {
+             return readFromFsA(path);
+         }
+         
+         public ByteBuffer getResourceData( String path ) throws IOException
+         {
+             File f = new File(path + "/..namedfork/rsrc");
+             if (!f.exists())
+                 return ByteBuffer.allocate(0);
+             if (f.length() == 0)
+                 return ByteBuffer.allocate(0);
+             
+             if (f.length() >= Integer.MAX_VALUE - 1000)
+                 throw new IOException("Resourcefork too large (" + f.length() + "): " + path);
+             
+             byte[] data = new byte[(int)f.length()];
+             
+             FileInputStream fio = null;
+             try 
+             {
+                 fio = new FileInputStream(f);
+                 int rlen = fio.read(data);
+                 if (rlen != data.length) {
+                     throw new IOException("Resourcefork incomplete (" + rlen + "/" + f.length() + "): " + path);
+                 }
+             } 
+             finally
+             {
+                 if (fio != null)
+                 {
+                     fio.close();
+                 }
+                 
+             }
+             return ByteBuffer.wrap( data );
+         }
+         
+         public void putResourceData( String path, byte[] data ) throws IOException
+         {
+             File f = new File(path + "/..namedfork/rsrc");
+             
+             
+             FileOutputStream fio = null;
+             try 
+             {
+                 fio = new FileOutputStream(f);
+                 fio.write(data);                 
+             } 
+             finally
+             {
+                 if (fio != null)
+                 {
+                     fio.close();
+                 }                 
+             }             
+         }
+         
+         ByteBuffer readFromFsA(String path)
+         {
+             
+             ByteBuffer  buff = allocByteBuffer(4096);
+             char version = 'a';
+             Attrlist attrList = new Attrlist();
+             
+             attrList.bitmapcount = ATTR_BIT_MAP_COUNT;
+             attrList.commonattr = ATTR_CMN_FNDRINFO |ATTR_CMN_EXTENDED_SECURITY;
+             
+             int err = delegate.getattrlist(path, attrList, buff, buff.limit(), FSOPT_REPORT_FULLSIZE);
+             if (err != 0)
+                 return null;
+             
+            int length = buff.getInt(0);
+            if (length >= buff.limit())
+            {
+                buff = allocByteBuffer(length);
+                err = delegate.getattrlist(path, attrList, buff, buff.limit(), FSOPT_REPORT_FULLSIZE);
+                if (err != 0)
+                    return null;
+            }
+            buff.limit(length);
+            ByteBuffer data = allocByteBuffer( length + 2 );
+            data.putChar(version);
+            data.put(buff.array(), 2, length);
+                
+
+            return data;             
+         }
+         
+         public boolean writeToFs(String path, byte[] buff)
+         {
+             ByteBuffer data = ByteBuffer.wrap(buff);
+             char version = data.getChar();
+             
+             ByteBuffer wbuff = ByteBuffer.wrap(buff, 2, buff.length - 2);
+             
+             if (version == 'a')
+                 return writeToFsA(path, wbuff);
+             
+             return false;            
+         }
+         
+         boolean writeToFsA(String path, ByteBuffer buff)
+         {
+             Attrlist attrList = new Attrlist();
+             
+             attrList.bitmapcount = ATTR_BIT_MAP_COUNT;
+             attrList.commonattr = ATTR_CMN_FNDRINFO |ATTR_CMN_EXTENDED_SECURITY;
+             
+             byte[] bb = buff.array(); 
+             int err = delegate.setattrlist(path, attrList, bb, bb.length, 0);
+             
+             if (err != 0)
+                 return false;
+                        
+            return true;             
+         }
+         
+         
+         
 
     public static int getattrlist(String path, Attrlist  attrList, ByteBuffer attrBuf, int attrBufSize, long options)
     {
          return delegate.getattrlist(path, attrList, attrBuf, attrBufSize, options);
     }
-    public static int setattrlist(String path, Attrlist  attrList, ByteBuffer attrBuf, int attrBufSize, long options)
+    public static int setattrlist(String path, Attrlist  attrList, byte[] attrBuf, int attrBufSize, long options)
     {
          return delegate.setattrlist(path, attrList, attrBuf, attrBufSize, options);
     }
@@ -557,7 +661,8 @@ public class MacRemoteFSElemFactory implements RemoteFSElemFactory
 
          
          attrList.bitmapcount = ATTR_BIT_MAP_COUNT;
-         attrList.commonattr  = ATTR_CMN_OBJTYPE | ATTR_CMN_FNDRINFO;
+         attrList.commonattr  = ATTR_CMN_OBJTYPE | ATTR_CMN_FNDRINFO |ATTR_CMN_EXTENDED_SECURITY;
+         attrList.commonattr  =  ATTR_CMN_FNDRINFO;
 
          err = delegate.getattrlist(path, attrList, buff, buff.limit(), 0);
 

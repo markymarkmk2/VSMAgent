@@ -130,7 +130,7 @@ public class MacAgentApi extends NetAgentApi
 
     @Override
     public byte[] rawRead(  byte[] data, RemoteFSElemWrapper wrapper, long pos, int bsize )
-    {
+    {       
         RandomAccessFile h = getNativeAccesor().get_handle(wrapper);
         int real_rlen = 0;
 
@@ -416,7 +416,12 @@ public class MacAgentApi extends NetAgentApi
     public String readAclInfo( RemoteFSElem dir )
     {
         AttributeList attrs = get_attributes(dir);
+        if (attrs == null)
+            return null;
 
+        if (attrs.getList().isEmpty())
+            return null;
+        
         XStream xs = new XStream();
         String s = ZipUtilities.compress(xs.toXML(attrs));
         return s;

@@ -340,7 +340,12 @@ public class Main
         final ServerSocket ss;
         try
         {
-            netServlet = (is_win()) ? NetServlet.createWinNetServlet() : NetServlet.createUnixNetServlet(cdpIpFilter);
+            if (is_win())
+                netServlet = NetServlet.createWinNetServlet();
+            else if (is_osx())
+                netServlet = NetServlet.createMacNetServlet(cdpIpFilter);
+            else 
+                netServlet = NetServlet.createUnixNetServlet(cdpIpFilter);
 
             ss = new ServerSocket(port);
             ss.setReuseAddress(true);

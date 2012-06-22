@@ -6,6 +6,7 @@
 package de.dimm.vsm.client;
 
 import com.caucho.hessian.server.HessianServlet;
+import de.dimm.vsm.client.mac.MacAgentApi;
 import de.dimm.vsm.client.unix.UnixAgentApi;
 import de.dimm.vsm.client.win.WinAgentApi;
 import de.dimm.vsm.hash.HashFunctionPool;
@@ -51,6 +52,13 @@ public class NetServlet extends HessianServlet implements AgentApi
         
         pool = new HashFunctionPool(10);
         return new NetServlet( new UnixAgentApi(pool, cdpIpFilter));
+    }
+    static public NetServlet createMacNetServlet(String cdpIpFilter ) throws Exception
+    {        
+        HashFunctionPool pool;
+        
+        pool = new HashFunctionPool(10);
+        return new NetServlet( new MacAgentApi(pool, cdpIpFilter));
     }
 
 

@@ -77,10 +77,22 @@ public class VSMLibC
         public  int listxattr (String path, ByteBuffer data, int len );
         public  int getxattr (String path, String name, ByteBuffer data, int len );
         public  int setxattr (String path, String name, ByteBuffer data, int len, int flags );
-        public  int osx_setxattr (String path, String name, ByteBuffer data, int len, int offset, int flags );
-        public  int osx_getxattr (String path, String name, ByteBuffer data, int offset, int len );
+        
+        public IntByReference __error();
     }
 
+    public interface OSXLibrary extends Library
+    {
+        OSXLibrary INSTANCE = (OSXLibrary) Native.loadLibrary((Platform.isWindows() ? "msvcrt" : "c"),
+                OSXLibrary.class);
+        
+
+        public  int listxattr (String path, ByteBuffer data, int len, int options );
+        public  int setxattr (String path, String name, ByteBuffer data, int len, int offset, int flags );
+        public  int getxattr (String path, String name, ByteBuffer data, int len, int offset, int FLAGS );
+        public IntByReference __error();
+    }
+    
     public interface ACLLibrary extends Library
     {
         ACLLibrary INSTANCE = (ACLLibrary) Native.loadLibrary("acl", ACLLibrary.class);
@@ -117,6 +129,11 @@ public class VSMLibC
 //    }
 
     
+    static boolean is_mac()
+    {
+        String osname = System.getProperty("os.name");
+        return osname.startsWith("Mac");
+    }
 
     public static int stat(String path, FileStat stat)
     {
@@ -128,25 +145,32 @@ public class VSMLibC
         return CLibrary.INSTANCE.stat( path, stat );
     }
 
+    public static int listxattr (String path, ByteBuffer data, int len )
+    {
+        if (is_mac())
+        {
+            return OSXLibrary.INSTANCE.listxattr( path, data, len, 0);
+        }
+        return CLibrary.INSTANCE.listxattr(path, data, len);
+    }
     public static int getxattr (String path, String name, ByteBuffer data, int len )
     {
-        String osname = System.getProperty("os.name");
-        if (osname.startsWith("OSX"))
+        if (is_mac())
         {
-            return CLibrary.INSTANCE.osx_getxattr( path, name, data, 0, len);
+            return OSXLibrary.INSTANCE.getxattr( path, name, data, len, 0, 0);
         }
         return CLibrary.INSTANCE.getxattr(path, name, data, len);
     }
     public static int setxattr (String path, String name, ByteBuffer data, int len, int flags )
     {
-        String osname = System.getProperty("os.name");
-        if (osname.startsWith("OSX"))
+        if (is_mac())
         {
-            return CLibrary.INSTANCE.osx_setxattr( path, name, data, 0, len, flags);
+            return OSXLibrary.INSTANCE.setxattr( path, name, data, len, 0, flags);
         }
         return CLibrary.INSTANCE.setxattr(path, name, data, len, flags);
     }
 
+    
 
 
     public static void printf( String format, Object... args )

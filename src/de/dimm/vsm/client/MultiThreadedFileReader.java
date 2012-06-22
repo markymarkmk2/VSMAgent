@@ -6,6 +6,8 @@
 package de.dimm.vsm.client;
 
 
+import de.dimm.vsm.client.mac.MacAgentApi;
+import de.dimm.vsm.client.mac.MacMultiThreadedFileReader;
 import de.dimm.vsm.client.unix.UnixAgentApi;
 import de.dimm.vsm.client.unix.UnixMultiThreadedFileReader;
 import de.dimm.vsm.client.win.WinAgentApi;
@@ -466,6 +468,8 @@ public abstract class MultiThreadedFileReader
             return new UnixMultiThreadedFileReader();
         if (api instanceof WinAgentApi)
             return new WinMultiThreadedFileReader();
+        if (api instanceof MacAgentApi)
+            return new MacMultiThreadedFileReader();
 
         throw new RuntimeException("Unknown API Type in MTFRFactory");
     }

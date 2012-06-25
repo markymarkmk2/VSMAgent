@@ -240,7 +240,7 @@ public class MacFSElemAccessor extends FSElemAccessor
             else if (arr[end] == 0)
             {
                 if (start < end)
-                    l.add(new String(arr, start, end));
+                    l.add(new String(arr, start,  end - start));
 
                 start = end + 1;
                 if (start >= arr.length)
@@ -408,6 +408,15 @@ public class MacFSElemAccessor extends FSElemAccessor
             }
         }
     }
+    
+    public static final String[] skipAttributes=
+    {
+        "system.posix_acl_access",
+        "system.posix_acl_default",
+        "com.apple.FinderInfo",
+        "com.apple.ResourceFork"
+    };
+        
 
     AttributeList get_attributes( RemoteFSElem elem ) throws Exception
     {
@@ -435,7 +444,21 @@ public class MacFSElemAccessor extends FSElemAccessor
             {
                 String name = names[i];
                 byte[] data = null;
-                if (!name.equals("system.posix_acl_access") && !name.equals("system.posix_acl_default"))
+                
+                // SKIP ALL AUTOMATICALLY HANDLED ATTRIBUTES
+                boolean skipAttribute = false;
+                
+                for (int j = 0; j < skipAttributes.length; j++)
+                {
+                    String attrName = skipAttributes[j];
+                    if (name.equals(attrName))
+                    {
+                        skipAttribute = true;
+                        break;
+                    }
+                }
+                
+                if (!skipAttribute)
                 {
                     System.out.println("Adding Mac attribute " + name + " for " + path);
                     

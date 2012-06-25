@@ -12,7 +12,11 @@ import de.dimm.vsm.Utilities.ThreadPoolWatcher;
 import de.dimm.vsm.VSMFSLogger;
 import de.dimm.vsm.client.jna.LibKernel32;
 import de.dimm.vsm.client.jna.WinSnapshot;
+import de.dimm.vsm.client.mac.MacAgentApi;
+import de.dimm.vsm.client.mac.MacFSElemAccessor;
 import de.dimm.vsm.client.win.WinAgentApi;
+import de.dimm.vsm.net.AttributeEntry;
+import de.dimm.vsm.net.AttributeList;
 import de.dimm.vsm.net.interfaces.AgentApi;
 import java.io.BufferedReader;
 import java.io.File;
@@ -23,6 +27,10 @@ import java.io.OutputStream;
 import java.lang.reflect.Field;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.file.*;
+import java.text.Normalizer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ThreadPoolExecutor;
 import org.apache.log4j.Level;
 
@@ -45,7 +53,7 @@ public class Main
     // START WITH 50 BLOCKS AKA 50MB CACHE
     public static int CACHE_FILE_FLOCKS = 50;
 
-    static void print_system_property( String key )
+    public static void print_system_property( String key )
     {
         System.out.println("Property " + key + ": " + System.getProperty(key));
     }
@@ -77,6 +85,12 @@ public class Main
             jlibpath = System.getProperty("user.dir") + ":" + jlibpath;
 
         System.setProperty("java.library.path", jlibpath);
+        if (is_osx())
+        {
+            // BUGFIX FOR MAC ENCODING
+            System.setProperty("file.encoding", "UTF-8");
+            System.setProperty("sun.jnu.encoding", "UTF-8");                     
+        }
         try
         {
             // THIS HACK REREADS SYSTEMPATH FOR LIBRARY LOADING!!!
@@ -100,6 +114,8 @@ public class Main
         print_system_property("os.version");
         print_system_property("user.dir");
         print_system_property("java.library.path");
+        print_system_property("file.encoding");
+        print_system_property("sun.jnu.encoding");
 
 
         File f = new File(".");
@@ -182,6 +198,45 @@ public class Main
         return debug;
     }
 
+    static void testCharSet()
+    {
+        File dir = new File("/Users/mw/Desktop/A");
+        File[] list = dir.listFiles();
+        for (int f = 0; f < list.length; f++)
+        {
+            File fh = list[f];
+            
+
+            String path = fh.getAbsolutePath();
+            System.out.println(path + " :len: " + fh.length() );
+            
+            MacAgentApi api = new MacAgentApi(null, "");
+            MacFSElemAccessor fs = new MacFSElemAccessor(api);
+            try
+            {
+                AttributeList al = new AttributeList();
+                List<AttributeEntry> all = fs.getACLFinderAttributeEntry(path);
+                System.out.println( "Alen: " + all);
+                al.getList().addAll(all);
+                System.out.println( al.toString() );
+                
+                if (!fs.setACLFinderAttributeEntry( path, all ))
+                {
+                    System.out.println( "Error while setting " + path );
+                }
+            }
+            catch (Exception iOException)
+            {
+                iOException.printStackTrace();
+            }
+            
+            System.out.println(Normalizer.normalize(path, Normalizer.Form.NFC).getBytes().length);            
+            System.out.println(Normalizer.normalize(path, Normalizer.Form.NFD).getBytes().length);
+            System.out.println(Normalizer.normalize(path, Normalizer.Form.NFKC).getBytes().length);            
+            System.out.println(Normalizer.normalize(path, Normalizer.Form.NFKD).getBytes().length);
+        }
+    }
+
 
     public static void main( String[] args )
     {
@@ -189,6 +244,9 @@ public class Main
 
         //DokanVSMFS.test();
 
+        
+        
+        
         int port = 8082;
         
         for (int i = 0; i < args.length; i++)
@@ -232,6 +290,8 @@ public class Main
         final Main mn = new Main();
         mn.init();
 
+        //testCharSet();
+        
         if (is_win())
         {
             try

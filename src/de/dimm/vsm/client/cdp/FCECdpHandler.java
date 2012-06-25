@@ -49,7 +49,7 @@ public class FCECdpHandler extends CdpHandler
         }
         catch (Exception exception)
         {
-            cdp_param.set_error("Start CDP schl‰gt fehl" + exception.toString());
+            cdp_param.set_error("Start CDP schl√§gt fehl" + exception.toString());
             return false;
         }
         

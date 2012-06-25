@@ -8,6 +8,7 @@ package de.dimm.vsm.client.mac;
 import com.sun.jna.*;
 import com.thoughtworks.xstream.XStream;
 import de.dimm.vsm.client.AttributeContainerImpl;
+import de.dimm.vsm.client.Main;
 import de.dimm.vsm.client.RemoteFSElemFactory;
 import de.dimm.vsm.client.jna.PosixWrapper;
 import de.dimm.vsm.net.AttributeContainer;
@@ -16,7 +17,11 @@ import de.dimm.vsm.records.FileSystemElemNode;
 import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.file.*;
+import java.text.Normalizer;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import org.jruby.ext.posix.FileStat;
 import org.jruby.ext.posix.Group;
 import org.jruby.ext.posix.POSIX;
@@ -295,11 +300,30 @@ public class MacRemoteFSElemFactory implements RemoteFSElemFactory
     public synchronized  RemoteFSElem create_elem( File fh, boolean lazyAclInfo )
     {
         String path = fh.getAbsolutePath();
-        path = AccentComposer.composeAccents(path);
+//        try
+//        {
+//            char[] c = path.toCharArray();
+//            byte[] b = new byte[c.length];
+//            for (int i = 0; i < b.length; i++)
+//            {
+//                char ch = c[i];
+//                if (ch < 256)
+//                {
+//                    b[i] = (byte) c[i];
+//                }                
+//            }
+//            path = new String(b, "UTF-8");
+//            path = AccentComposer.composeAccents(path);
+//        }
+//        catch (UnsupportedEncodingException unsupportedEncodingException)
+//        {
+//        }
+//        
         
 
         String typ = fh.isDirectory() ? FileSystemElemNode.FT_DIR : FileSystemElemNode.FT_FILE;
 
+        fh.length();
         long len = get_flen( fh );
         long streamLen = evalStreamLen( fh );
 
@@ -320,7 +344,6 @@ public class MacRemoteFSElemFactory implements RemoteFSElemFactory
         if (stat != null)
         {            
             typ = getTypFromStat(stat);
-
             String gidName = "";
             Group gr = posix.getgrgid( stat.gid());
             if (gr != null)
@@ -524,6 +547,7 @@ public class MacRemoteFSElemFactory implements RemoteFSElemFactory
          return buff;
      }
      
+     
          
          public ByteBuffer readFromFs(String path)
          {
@@ -694,5 +718,70 @@ public class MacRemoteFSElemFactory implements RemoteFSElemFactory
          
          return err;
      }
-        
+     
+//    public File[] listFiles( File dir )
+//    {
+//        
+//        // WORK AROUND MAC BUG
+//        FileSystem fs = FileSystems.getDefault();
+//        Path p = fs.getPath(dir.getAbsolutePath());
+//        
+//        List <File> ret = new ArrayList<File>();
+//        
+//        try
+//        {
+//            DirectoryStream<Path> files = Files.newDirectoryStream(p);
+//            
+//            for (Path path : files)
+//            {
+//                ret.add( path.toFile() );
+//            }
+//            files.close();
+//        }
+//        catch (IOException iOException)
+//        {
+//            iOException.printStackTrace();
+//        }
+//        return ret.toArray( new File[0]);
+//        
+//    }
+//
+//        
+//    static void checkEnc()
+//    {
+//        Main.print_system_property("sun.jnu.encoding");
+//        Main.print_system_property("file.encoding");
+//        File dir = new File("/Users/mw/Desktop/A");
+//        
+//        FileSystem fs = FileSystems.getDefault();
+//        Path p = fs.getPath(dir.getAbsolutePath());
+//        
+//        try
+//        {
+//            DirectoryStream<Path> files = Files.newDirectoryStream(p);
+//            
+//            for (Path path : files)
+//            {
+//                
+//                System.out.println(path.toString());
+//                File f = path.toFile();
+//                
+//                System.out.println(f.getAbsolutePath() + ": " + (f.exists()?"ok" : "nok") + " : len: " + f.length());
+//                String nfc_path = Normalizer.normalize(path.toString(), Normalizer.Form.NFC);
+//                System.out.println(nfc_path);
+//            }
+//            files.close();
+//        }
+//        catch (IOException iOException)
+//
+//        {
+//            iOException.printStackTrace();
+//        }
+//        Main.print_system_property("sun.jnu.encoding");
+//        Main.print_system_property("file.encoding");
+//        
+//        
+//            
+//            
+//    }
 }

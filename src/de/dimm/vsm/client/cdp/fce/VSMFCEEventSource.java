@@ -170,7 +170,7 @@ class NetatalkUDPEventSource
         }
         else
         {
-            System.out.println("Unbekannter FCE-Port für ticket " + ticket.toString());
+            System.out.println("Unbekannter FCE-Port fÃ¼r ticket " + ticket.toString());
         }
 
         try

@@ -173,10 +173,10 @@ public class AttributeContainerImpl
 
         addToMaps( "BUILTIN\\ADMINISTRATORS", "VORDEFINIERT\\Administratoren");
         addToMaps( "BUILTIN\\USERS", "VORDEFINIERT\\Benutzer");
-        addToMaps( "BUILTIN\\GUESTS", "VORDEFINIERT\\Gäste");
-        addToMaps( "NT AUTHORITY\\SYSTEM", "NT-AUTORITÄT\\SYSTEM");
-        addToMaps( "NT AUTHORITY\\authenticated users", "NT-AUTORITÄT\\Authentifizierte Benutzer");
-        addToMaps( "NT AUTHORITY\\LOCAL SERVICE", "NT-AUTORITÄT\\LOKALER DIENST");
+        addToMaps( "BUILTIN\\GUESTS", "VORDEFINIERT\\GÃ¤ste");
+        addToMaps( "NT AUTHORITY\\SYSTEM", "NT-AUTORITÃ„T\\SYSTEM");
+        addToMaps( "NT AUTHORITY\\authenticated users", "NT-AUTORITÃ„T\\Authentifizierte Benutzer");
+        addToMaps( "NT AUTHORITY\\LOCAL SERVICE", "NT-AUTORITÃ„T\\LOKALER DIENST");
     }
 
     static private String mapPrincipal( String p, boolean systemIsGerman )

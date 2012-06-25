@@ -7,6 +7,8 @@ package de.dimm.vsm.client.mac;
 import de.dimm.vsm.client.mac.MacRemoteFSElemFactory.StatStructure;
 import de.dimm.vsm.net.RemoteFSElem;
 import java.io.File;
+import java.io.UnsupportedEncodingException;
+import java.text.Normalizer;
 import org.jruby.ext.posix.FileStat;
 import org.junit.*;
 import static org.junit.Assert.*;
@@ -38,6 +40,43 @@ public class MacRemoteFSElemFactoryTest {
 
 
 
+    
+    @Test
+    public void testCharset() 
+    {
+        File dir = new File("/Users/mw/Desktop/A");
+        File[] list = dir.listFiles();
+        for (int f = 0; f < list.length; f++)
+        {
+            File fh = list[f];
+            
+
+            String path = fh.getAbsolutePath();
+            System.out.println(path);
+
+            path =  Normalizer.normalize(path, Normalizer.Form.NFC);
+            
+            System.out.println(path);
+//            try
+//            {
+//                char[] c = path.toCharArray();
+//                byte[] b = new byte[c.length];
+//                for (int i = 0; i < b.length; i++)
+//                {
+//                    char ch = c[i];
+//                    if (ch < 256)
+//                    {
+//                        b[i] = (byte) c[i];
+//                    }                
+//                }
+//                path = new String(b, "UTF-8");
+//                path = AccentComposer.composeAccents(path);
+//            }
+//            catch (UnsupportedEncodingException unsupportedEncodingException)
+//            {
+//            }
+        }
+    }
     /**
      * Test of getFSType method, of class OsxRemoteFSElemFactory.
      */
@@ -121,7 +160,7 @@ public class MacRemoteFSElemFactoryTest {
         
         instance.FInfoDemo(args[0] );
         
-        instance.FInfoDemo("/Volumes/VOLUME/CodeWarrior Quick Start");
+        instance.FInfoDemo("/Volumes/Macintosh HD/Users/mw/CodeWarrior Quick Start");
         
     }
     

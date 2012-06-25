@@ -28,6 +28,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
+import java.text.Normalizer;
+import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.commons.codec.binary.Base64;
@@ -248,7 +250,7 @@ public class MacFSElemAccessor extends FSElemAccessor
         return l.toArray(new String[0]);
     }
 
-    List<AttributeEntry> getACLFinderAttributeEntry(String path) throws IOException
+    public List<AttributeEntry> getACLFinderAttributeEntry(String path) throws IOException
     {
          int             err;
          Attrlist      attrList = new Attrlist();
@@ -291,6 +293,7 @@ public class MacFSElemAccessor extends FSElemAccessor
                  {
                     entry = new AttributeEntry(FNDRINFONAME, info);
                     al.add(entry);
+                    //System.out.println("Finderattribute für " + path + " " + entry.toString());
                     break;
                  }                 
              }
@@ -304,18 +307,26 @@ public class MacFSElemAccessor extends FSElemAccessor
 //           attrreference_t;
              int attr_dataoffset = buff.getInt();
              int attr_length = buff.getInt();
-             byte[] acl = new byte[attr_length];
-             buff.get(acl, 0, attr_length);
-             
-             entry = new AttributeEntry(ACLNAME, acl);
-             al.add(entry);
-                     
+             if (attr_length > 0)
+             {
+                byte[] acl = new byte[attr_length];
+                buff.get(acl, 0, attr_length);
+
+                entry = new AttributeEntry(ACLNAME, acl);
+                al.add(entry);
+
+              //  System.out.println("ACLattribute für " + path + " " + entry.toString());
+             }   
         }
+         else
+         {
+             System.out.println("Fehler beim Lesen der ACL-Finderattribute für " + path);
+         }
         return al;
     }
 
 
-    boolean setACLFinderAttributeEntry(String path, List<AttributeEntry> al) throws Exception
+    public boolean setACLFinderAttributeEntry(String path, List<AttributeEntry> al) throws Exception
     {
          int err = 0;
          Attrlist attrList = new Attrlist();
@@ -375,10 +386,11 @@ public class MacFSElemAccessor extends FSElemAccessor
     private void set_attributes( RemoteFSElem elem,  AttributeList attrs ) throws Exception
     {
         String path = elem.getPath();
+        path = Normalizer.normalize(path, Normalizer.Form.NFD);
 
         if (!setACLFinderAttributeEntry( path, attrs.getList() ))
         {
-            System.out.println("Fehler beim Setzen der ACL-Finderattribute f�r " + path);
+            System.out.println("Fehler beim Setzen der ACL-Finderattribute für " + path);
         }
         
         for (int i = 0; i < attrs.getList().size(); i++)
@@ -391,7 +403,7 @@ public class MacFSElemAccessor extends FSElemAccessor
                 ByteBuffer buff = ByteBuffer.wrap(entry.getData());
                 if (VSMLibC.setxattr(path, name, buff, buff.capacity(), 0) != 0)
                 {
-                    System.out.println("Fehler beim Setzen des Attributes " + name + " f�r " + path);
+                    System.out.println("Fehler beim Setzen des Attributes " + name + " für " + path);
                 }
             }
         }

@@ -1,0 +1,11 @@
+Veränderungen in V0.8.5
+UPD: EtherShare Agent alpha
+UPD: UScore Agent alpha
+UPD: Mac FileChange Events
+
+Veränderungen in V0.8.4
+UPD: Mac-Agent beta
+
+Veränderungen in V0.8.3
+UPD: Mac-Agent alpha
+

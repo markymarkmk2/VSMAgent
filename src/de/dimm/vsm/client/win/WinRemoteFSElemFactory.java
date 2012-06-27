@@ -18,6 +18,7 @@ import de.dimm.vsm.net.AttributeContainer;
 import de.dimm.vsm.net.RemoteFSElem;
 import de.dimm.vsm.records.FileSystemElemNode;
 import java.io.File;
+import java.io.IOException;
 import java.util.HashMap;
 
 // H:\Archiv_H\444440497502D075\zm\referenzen\444440497501_593085\zm\referenzen\444440497500_582452\angeliefert\07.03.11\29831_DF_PHILADELPHIA_Snack_MP_Milka\29831 DF PHILADELPHIA Snack Milka MP Collection\ausgabe\norm\29831 DF PHILADELPHIA Snack Milka MP_norm.pdf
@@ -25,7 +26,7 @@ import java.util.HashMap;
  *
  * @author Administrator
  */
-public class WinRemoteFSElemFactory implements RemoteFSElemFactory
+public class WinRemoteFSElemFactory extends RemoteFSElemFactory
 {
 
     public static String getLongPath( RemoteFSElem elem )
@@ -59,6 +60,9 @@ public class WinRemoteFSElemFactory implements RemoteFSElemFactory
     @Override
     public synchronized  RemoteFSElem create_elem( File fh, boolean lazyAclInfo )
     {
+        if (fh == null)
+            return null;
+        
         String fpath = getLongPath( fh );
 
         WString path = new WString(fpath);
@@ -80,6 +84,7 @@ public class WinRemoteFSElemFactory implements RemoteFSElemFactory
             if (lazyAclInfo)
             {
                 elem.setAclinfoData(RemoteFSElem.LAZY_ACLINFO);
+                elem.setAclinfo(RemoteFSElem.ACLINFO_WIN);
             }
             else
             {
@@ -375,5 +380,36 @@ public class WinRemoteFSElemFactory implements RemoteFSElemFactory
         return LibKernel32.getFsName(path);
     }
 
-   
+    @Override
+    public void writeAclInfo( RemoteFSElem elem ) throws IOException
+    {
+        try
+        {
+            if (elem.getAclinfo() == RemoteFSElem.ACLINFO_WIN || elem.getAclinfo() == 0)
+            {
+                AttributeContainer ac = AttributeContainer.unserialize(elem.getAclinfoData());
+                if (ac != null)
+                {
+                    AttributeContainerImpl.set(elem, ac);
+                }
+            }
+        }
+        catch (Exception exception)
+        {
+            throw new IOException("Error while setting ACL and FinderInfo:" + exception.getMessage() );
+        }
+    }
+
+    @Override
+    public String getXAPath( String path )
+    {
+        throw new UnsupportedOperationException("Not supported");
+    }
+
+    @Override
+    public boolean mkDir( File f )
+    {
+        return f.mkdir();
+    }
+
 }

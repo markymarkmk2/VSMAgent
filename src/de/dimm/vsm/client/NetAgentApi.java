@@ -11,6 +11,8 @@ import de.dimm.vsm.client.cdp.CdpHandler;
 import de.dimm.vsm.fsutils.MountVSMFS;
 import de.dimm.vsm.fsutils.VSMFS;
 import de.dimm.vsm.hash.HashFunctionPool;
+import de.dimm.vsm.net.AttributeContainer;
+import de.dimm.vsm.net.AttributeList;
 import de.dimm.vsm.net.CdpTicket;
 import de.dimm.vsm.net.HashDataResult;
 import de.dimm.vsm.net.RemoteFSElem;
@@ -81,9 +83,9 @@ public abstract class NetAgentApi implements AgentApi
     //protected CdpHandler cdp_handler;
 
     private HashMap<CdpTicket,CdpHandler> cdpHandlerMap = new HashMap<CdpTicket, CdpHandler>();
-    protected RemoteFSElemFactory factory;
+    
     protected HFManager hfManager;
-    protected FSElemAccessor fsAcess;
+    
     HashMap<Long, VSMFS> mountMap = new HashMap<Long, VSMFS>();
 
     //protected FileCacheManager cacheManager;
@@ -95,19 +97,21 @@ public abstract class NetAgentApi implements AgentApi
     {
     }
 
-    public FSElemAccessor getFSElemAccessor()
-    {
-        return fsAcess;
-    }
-
-    public RemoteFSElemFactory getFsFactory()
-    {
-        return factory;
-    }
 
 
-    protected abstract void detectRsrcMode( File[] list );
+
+    abstract public FSElemAccessor getFSElemAccessor();
+    abstract public RemoteFSElemFactory getFsFactory();
+
+
+    protected abstract void detectRsrcMode( File parent, File[] list );
     protected abstract boolean isRsrcEntry( File f );
+
+    public int getRsrcMode()
+    {
+        return rsrcMode;
+    }
+    
 
     @Override
     public ArrayList<RemoteFSElem> list_dir( RemoteFSElem dir, boolean lazyAclInfo )
@@ -123,7 +127,7 @@ public abstract class NetAgentApi implements AgentApi
             System.out.println("No files for " + dir.getPath());
             return list;
         }
-        detectRsrcMode(files);
+        detectRsrcMode(fh, files);
 
         Arrays.sort(files, new FileComparator());
 
@@ -131,16 +135,14 @@ public abstract class NetAgentApi implements AgentApi
         for (int i = 0; i < files.length; i++)
         {
             File file = files[i];
-
-            // TODO: SWITCH DEPENDING ON ACTUAL FS
-
+           
             if (isRsrcEntry(file))
             {
                 continue;
             }
 
             //if ()
-            RemoteFSElem elem = factory.create_elem(file, lazyAclInfo);
+            RemoteFSElem elem = getFsFactory().create_elem(file, lazyAclInfo);
 
             list.add(elem);
         }
@@ -169,7 +171,7 @@ public abstract class NetAgentApi implements AgentApi
                 continue;
             }
 
-            RemoteFSElem elem = factory.create_elem(file, true);
+            RemoteFSElem elem = getFsFactory().create_elem(file, true);
 
             list.add(elem);
         }
@@ -218,7 +220,7 @@ public abstract class NetAgentApi implements AgentApi
     @Override
     public RemoteFSElemWrapper open_data( RemoteFSElem file, int flags ) throws IOException
     {
-        RemoteFSElemWrapper wrapper = fsAcess.open_handle(file, flags);
+        RemoteFSElemWrapper wrapper = getFSElemAccessor().open_handle(file, flags);
 
         return wrapper;
     }
@@ -226,7 +228,7 @@ public abstract class NetAgentApi implements AgentApi
     @Override
     public RemoteFSElemWrapper open_stream_data( RemoteFSElem file, int flags ) throws IOException
     {
-        RemoteFSElemWrapper wrapper = fsAcess.open_xa_handle(file, flags);
+        RemoteFSElemWrapper wrapper = getFSElemAccessor().open_xa_handle(file, flags);
 
         return wrapper;
     }
@@ -242,7 +244,7 @@ public abstract class NetAgentApi implements AgentApi
     @Override
     public boolean close_data( RemoteFSElemWrapper wrapper ) throws IOException
     {
-        return fsAcess.close_handle(wrapper);
+        return getFSElemAccessor().close_handle(wrapper);
     }
 
 
@@ -252,7 +254,7 @@ public abstract class NetAgentApi implements AgentApi
     {
         byte[] data = null;
 
-        FileHandleData hdata = fsAcess.get_handleData(wrapper);
+        FileHandleData hdata = getFSElemAccessor().get_handleData(wrapper);
 
         if (pos == 0)
         {
@@ -263,7 +265,7 @@ public abstract class NetAgentApi implements AgentApi
                 totalLen = hdata.elem.getDataSize();
             if (totalLen > 2* bsize)
             {
-                MultiThreadedFileReader mtfr = fsAcess.createMultiThreadedFileReader(this, wrapper);
+                MultiThreadedFileReader mtfr = getFSElemAccessor().createMultiThreadedFileReader(this, wrapper);
                 if (mtfr != null)
                 {
                     hdata.setPrefetch(true);
@@ -274,7 +276,7 @@ public abstract class NetAgentApi implements AgentApi
 
         if (hdata.isPrefetch())
         {
-            MultiThreadedFileReader mtfr = fsAcess.getMultiThreadedFileReader(wrapper);
+            MultiThreadedFileReader mtfr = getFSElemAccessor().getMultiThreadedFileReader(wrapper);
             if (mtfr != null)
             {
                 String hashValue = mtfr.getHash(pos, bsize);
@@ -347,11 +349,11 @@ public abstract class NetAgentApi implements AgentApi
         byte[] data = null;
 
         // READ VIA CACHE MANAGER
-        FileHandleData hdata = fsAcess.get_handleData(wrapper);
+        FileHandleData hdata = getFSElemAccessor().get_handleData(wrapper);
 
         if (hdata.isPrefetch())
         {
-            MultiThreadedFileReader mtfr = fsAcess.getMultiThreadedFileReader(wrapper);
+            MultiThreadedFileReader mtfr = getFSElemAccessor().getMultiThreadedFileReader(wrapper);
             if (mtfr != null)
             {
                 if (wrapper.isXa())
@@ -394,7 +396,7 @@ public abstract class NetAgentApi implements AgentApi
     {
         byte[] data = null;
 
-        FileHandleData hdata = fsAcess.get_handleData(wrapper);
+        FileHandleData hdata = getFSElemAccessor().get_handleData(wrapper);
 
         if (pos == 0)
         {
@@ -405,7 +407,7 @@ public abstract class NetAgentApi implements AgentApi
                 totalLen = hdata.getElem().getDataSize();
             if (totalLen > 2* bsize)
             {
-                MultiThreadedFileReader mtfr = fsAcess.createMultiThreadedFileReader(this, wrapper);
+                MultiThreadedFileReader mtfr = getFSElemAccessor().createMultiThreadedFileReader(this, wrapper);
                 if (mtfr != null)
                 {
                     hdata.setPrefetch(true);
@@ -416,7 +418,7 @@ public abstract class NetAgentApi implements AgentApi
 
         if (hdata.isPrefetch())
         {
-            MultiThreadedFileReader cacheManager = fsAcess.getMultiThreadedFileReader(wrapper);
+            MultiThreadedFileReader cacheManager = getFSElemAccessor().getMultiThreadedFileReader(wrapper);
             if (wrapper.isXa())
             {
                 data = cacheManager.getXAData( pos, bsize);
@@ -714,12 +716,49 @@ public abstract class NetAgentApi implements AgentApi
 
         return false;
     }
-  @Override
+
+    @Override
     public String readAclInfo( RemoteFSElem dir )
     {
-        return factory.readAclInfo(dir);
+        try
+        {
+            String s = getFsFactory().readAclInfo(dir);
+            return s;
+        }
+        catch (IOException iOException)
+        {
+            System.out.println("Fehler beim Lesen der ACLInfos von " + dir.getPath() + ": " + iOException.getMessage());
+        }
+
+        return null;
     }
-    
+
+    @Override
+    public AttributeList get_attributes( RemoteFSElem file )
+    {
+        throw new RuntimeException( "get_attributes ist obsolet" );
+    }
+
+    @Override
+    public boolean set_attributes( RemoteFSElemWrapper wrapper )
+    {
+        boolean ret = true;
+        RemoteFSElem elem = getFSElemAccessor().get_handleData(wrapper).getElem();
+
+        try
+        {
+            getFsFactory().writeAclInfo(elem);
+        }
+        catch (IOException iOException)
+        {
+            ret = false;
+        }
+        set_filetimes_named( elem );
+
+        return ret;
+    }
+
+
 
 
     @Override
@@ -727,12 +766,121 @@ public abstract class NetAgentApi implements AgentApi
     {
         try
         {
-            return fsAcess.createSymlink( remoteFSElem.getPath(), remoteFSElem.getLinkPath());
+            return getFSElemAccessor().createSymlink( remoteFSElem.getPath(), remoteFSElem.getLinkPath());
         }
         catch (Exception e)
         {
         }
         return false;
     }
+
+    @Override
+    public boolean create_dir( RemoteFSElem elem )
+    {
+        File f = new File(elem.getPath());
+        try
+        {
+            if (getFSElemAccessor().mkDir( f ))
+            {
+                try
+                {
+                    getFsFactory().writeAclInfo(elem);
+                }
+                catch (IOException iOException)
+                {
+
+                }
+                set_filetimes_named( elem );
+                return true;
+            }
+        }
+        catch (Exception e)
+        {
+        }
+        return false;
+    }
+
+
+
+    protected boolean getBooleanOption( String name )
+    {
+        return getBooleanOption(name, false);
+    }
+    protected boolean getBooleanOption( String name, boolean def )
+    {
+        if( options == null)
+            return def;
+
+        String o = options.getProperty(name);
+        if (o == null)
+            return def;
+
+        char ch = o.charAt(0);
+        if ("1yYjJtT".indexOf(ch) != -1)
+            return true;
+
+        return false;
+    }
+    protected String getOption( String name)
+    {
+        return getOption(name, null);
+    }
+    protected String getOption( String name, String def )
+    {
+        if( options == null)
+            return def;
+
+        String o = options.getProperty(name);
+        if (o == null)
+            return def;
+
+        return o;
+    }
+    protected int getIntOption( String name )
+    {
+        return getIntOption(name, 0);
+    }
+    protected int getIntOption( String name, int def )
+    {
+        if( options == null)
+            return def;
+
+        String o = options.getProperty(name);
+        if (o == null)
+            return def;
+
+        try
+        {
+            return Integer.parseInt(o);
+        }
+        catch (NumberFormatException numberFormatException)
+        {
+        }
+        return 0;
+    }
+    protected long getLongOption( String name )
+    {
+        return getLongOption(name, 0);
+    }
+    protected long getLongOption( String name, long def )
+    {
+        if( options == null)
+            return def;
+
+        String o = options.getProperty(name);
+        if (o == null)
+            return def;
+
+        try
+        {
+            return Long.parseLong(o);
+        }
+        catch (NumberFormatException numberFormatException)
+        {
+        }
+        return 0;
+    }
+
+
 
 }

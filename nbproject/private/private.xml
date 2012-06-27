@@ -1,4 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project-private xmlns="http://www.netbeans.org/ns/project-private/1">
+    <data xmlns="http://www.netbeans.org/ns/profiler/1" version="0.9.1"/>
     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/1"/>
+    <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/1">
+        <file>file:/J:/Develop/VSM/V1.0/VSMAgent/src/de/dimm/vsm/client/NetAgentApi.java</file>
+        <file>file:/J:/Develop/VSM/V1.0/VSMAgent/src/de/dimm/vsm/client/FSElemAccessor.java</file>
+        <file>file:/J:/Develop/VSM/V1.0/VSMAgent/src/de/dimm/vsm/client/win/WinAgentApi.java</file>
+        <file>file:/J:/Develop/VSM/V1.0/VSMAgent/src/de/dimm/vsm/client/mac/MacAgentApi.java</file>
+        <file>file:/J:/Develop/VSM/V1.0/VSMAgent/src/de/dimm/vsm/client/unix/EtherShareRemoteFSElemFactory.java</file>
+        <file>file:/J:/Develop/VSM/V1.0/VSMAgent/src/de/dimm/vsm/client/mac/MacRemoteFSElemFactory.java</file>
+        <file>file:/J:/Develop/VSM/V1.0/VSMAgent/src/de/dimm/vsm/client/win/WinRemoteFSElemFactory.java</file>
+        <file>file:/J:/Develop/VSM/V1.0/VSMAgent/src/de/dimm/vsm/client/mac/MacFSElemAccessor.java</file>
+        <file>file:/J:/Develop/VSM/V1.0/VSMAgent/src/de/dimm/vsm/client/unix/NetatalkRemoteFSElemFactory.java</file>
+        <file>file:/J:/Develop/VSM/V1.0/VSMAgent/src/de/dimm/vsm/client/RemoteFSElemFactory.java</file>
+        <file>file:/J:/Develop/VSM/V1.0/VSMAgent/src/de/dimm/vsm/client/AttributeContainerImpl.java</file>
+        <file>file:/J:/Develop/VSM/V1.0/VSMAgent/src/de/dimm/vsm/client/unix/UScoreRemoteFSElemFactory.java</file>
+        <file>file:/J:/Develop/VSM/V1.0/VSMAgent/src/de/dimm/vsm/client/unix/UnixAgentApi.java</file>
+        <file>file:/J:/Develop/VSM/V1.0/VSMAgent/src/de/dimm/vsm/client/unix/UnixFSElemAccessor.java</file>
+    </open-files>
 </project-private>

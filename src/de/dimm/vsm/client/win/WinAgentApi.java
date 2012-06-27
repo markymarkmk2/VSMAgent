@@ -9,8 +9,10 @@ import com.sun.jna.platform.win32.WinNT.HANDLE;
 import com.sun.jna.ptr.IntByReference;
 import com.sun.jna.ptr.LongByReference;
 import de.dimm.vsm.Utilities.CryptTools;
+import de.dimm.vsm.client.FSElemAccessor;
 import de.dimm.vsm.client.FileHandleData;
 import de.dimm.vsm.client.NetAgentApi;
+import de.dimm.vsm.client.RemoteFSElemFactory;
 import de.dimm.vsm.client.cdp.CDP_Param;
 import de.dimm.vsm.client.cdp.CdpHandler;
 import de.dimm.vsm.client.cdp.WinCdpHandler;
@@ -63,16 +65,32 @@ public class WinAgentApi extends NetAgentApi
     
     public static boolean fake_read = false;
     public static boolean fake_hash = false;
-    
+
+    WinFSElemAccessor _fsAccess;
+    RemoteFSElemFactory _factory;
+
+
+    @Override
+    public FSElemAccessor getFSElemAccessor()
+    {
+        return _fsAccess;
+    }
+
+    @Override
+    public RemoteFSElemFactory getFsFactory()
+    {
+        return _factory;
+    }
+
 
     public WinAgentApi( HashFunctionPool hash_pool )
     {
         this.hash_pool = hash_pool;
-        this.fsAcess = new WinFSElemAccessor(this);
+        _fsAccess = new WinFSElemAccessor(this);
         options = new Properties();
 
 
-        factory = new WinRemoteFSElemFactory();
+        _factory = new WinRemoteFSElemFactory();
         hfManager = new WinHFManager();
         
         snapshot = new WinSnapShotHandler();
@@ -84,7 +102,7 @@ public class WinAgentApi extends NetAgentApi
 
     WinFSElemAccessor getNativeAccesor()
     {
-        return (WinFSElemAccessor) fsAcess;
+        return _fsAccess;
     }
 
 
@@ -95,7 +113,7 @@ public class WinAgentApi extends NetAgentApi
     }
 
     @Override
-    protected void detectRsrcMode( File[] list )
+    protected void detectRsrcMode( File parent, File[] list )
     {
     }
 
@@ -201,7 +219,7 @@ public class WinAgentApi extends NetAgentApi
     @Override
     public byte[] rawRead( byte[] data, RemoteFSElemWrapper wrapper, long pos, int bsize )
     {
-        WinFileHandleData hdata = (WinFileHandleData)fsAcess.get_handleData(wrapper);
+        WinFileHandleData hdata = (WinFileHandleData)getFSElemAccessor().get_handleData(wrapper);
         if (hdata == null)
             return null;
         
@@ -262,7 +280,7 @@ public class WinAgentApi extends NetAgentApi
         if (!LibKernel32.SetFilePointerEx(h, 0, null, LibKernel32.FILE_END))
             return -1;
 
-        WinFileHandleData hd = (WinFileHandleData)fsAcess.get_handleData(wrapper);
+        WinFileHandleData hd = (WinFileHandleData)getFSElemAccessor().get_handleData(wrapper);
 
             byte[] arr = new byte[LibKernel32.WINSTREAM_ID_SIZE];
             System.arraycopy(data, 0, arr, 0, arr.length);
@@ -409,38 +427,7 @@ public class WinAgentApi extends NetAgentApi
     }
 
 
-    @Override
-    public boolean create_dir( RemoteFSElem dir ) throws IOException
-    {
-        File f = new File(dir.getPath());
-        if (f.mkdir())
-        {
-            RemoteFSElemWrapper wrapper = null;
-            try
-            {
-                wrapper = open_data(dir, AgentApi.FL_RDONLY);
-                if (wrapper == null)
-                {
-                    throw new IOException("cannot open dir");
-                }
-                HANDLE h = getNativeAccesor().get_handle(wrapper);
-
-                getNativeAccesor().setFiletime( h, dir );
-
-                getNativeAccesor().close_handle(wrapper);
-                
-                return true;
-            }
-            catch (Exception e)
-            {
-            }
-            finally
-            {
-                close_data(wrapper);
-            }
-        }
-        return false;
-    }
+   
 
 
     @Override
@@ -486,43 +473,19 @@ public class WinAgentApi extends NetAgentApi
         return false;
     }
 
-    @Override
-    public AttributeList get_attributes( RemoteFSElem file )
-    {
-        return null;
-    }
-
+   
     @Override
     public boolean set_filetimes( RemoteFSElemWrapper wrapper )
     {
         HANDLE h = getNativeAccesor().get_handle(wrapper);
 //        HANDLE h = getNativeAccesor().get_handleData(wrapper).handle;
-        RemoteFSElem elem  = fsAcess.get_handleData(wrapper).getElem();
+        RemoteFSElem elem  = getFSElemAccessor().get_handleData(wrapper).getElem();
         if (h != null)
         {
             getNativeAccesor().setFiletime(h, elem);
             return true;
         }
         return false;
-    }
-    @Override
-    public boolean set_attributes( RemoteFSElemWrapper wrapper )
-    {
-        boolean ret = true;
-
-        RemoteFSElem elem = fsAcess.get_handleData(wrapper).getElem();
-
-        try
-        {
-            fsAcess.setAttributes(elem);
-        }
-        catch (IOException iOException)
-        {
-            ret = false;
-        }
-        set_filetimes( wrapper );
-
-        return ret;
     }
 
 

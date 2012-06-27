@@ -58,7 +58,7 @@ public class NetServlet extends HessianServlet implements AgentApi
         HashFunctionPool pool;
         
         pool = new HashFunctionPool(10);
-        return new NetServlet( new MacAgentApi(pool, cdpIpFilter));
+        return new NetServlet( new UnixAgentApi(pool, cdpIpFilter));
     }
 
 

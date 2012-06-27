@@ -42,7 +42,7 @@ public class Main
 {
 
     static String source_str = "trunk";
-    static String version = "0.8.2";
+    static String version = "0.8.5";
     static Main me;
     private static boolean agent_tcp = true;
     String work_dir;
@@ -198,54 +198,12 @@ public class Main
         return debug;
     }
 
-    static void testCharSet()
-    {
-        File dir = new File("/Users/mw/Desktop/A");
-        File[] list = dir.listFiles();
-        for (int f = 0; f < list.length; f++)
-        {
-            File fh = list[f];
-            
-
-            String path = fh.getAbsolutePath();
-            System.out.println(path + " :len: " + fh.length() );
-            
-            MacAgentApi api = new MacAgentApi(null, "");
-            MacFSElemAccessor fs = new MacFSElemAccessor(api);
-            try
-            {
-                AttributeList al = new AttributeList();
-                List<AttributeEntry> all = fs.getACLFinderAttributeEntry(path);
-                System.out.println( "Alen: " + all);
-                al.getList().addAll(all);
-                System.out.println( al.toString() );
-                
-                if (!fs.setACLFinderAttributeEntry( path, all ))
-                {
-                    System.out.println( "Error while setting " + path );
-                }
-            }
-            catch (Exception iOException)
-            {
-                iOException.printStackTrace();
-            }
-            
-            System.out.println(Normalizer.normalize(path, Normalizer.Form.NFC).getBytes().length);            
-            System.out.println(Normalizer.normalize(path, Normalizer.Form.NFD).getBytes().length);
-            System.out.println(Normalizer.normalize(path, Normalizer.Form.NFKC).getBytes().length);            
-            System.out.println(Normalizer.normalize(path, Normalizer.Form.NFKD).getBytes().length);
-        }
-    }
+   
 
 
     public static void main( String[] args )
     {
-        //NetServer agent_net_server = null;
-
-        //DokanVSMFS.test();
-
-        
-        
+       
         
         int port = 8082;
         
@@ -289,8 +247,6 @@ public class Main
 
         final Main mn = new Main();
         mn.init();
-
-        //testCharSet();
         
         if (is_win())
         {
@@ -304,7 +260,6 @@ public class Main
                 System.out.println("You have to install Microsft Visual c++ 2010 Redistributables (x86)");
             }
         }
-
 
 
         if (args.length > 0 && args[0].equals("testsnapshot"))

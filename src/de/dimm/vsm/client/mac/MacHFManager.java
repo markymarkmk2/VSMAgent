@@ -6,6 +6,7 @@
 package de.dimm.vsm.client.mac;
 
 import de.dimm.vsm.client.HFManager;
+import de.dimm.vsm.client.RemoteFSElemFactory;
 
 /**
  *
@@ -13,9 +14,18 @@ import de.dimm.vsm.client.HFManager;
  */
 public class MacHFManager extends HFManager
 {
+    MacRemoteFSElemFactory factory;
     public MacHFManager()
     {
         factory = new MacRemoteFSElemFactory();
     }
+
+    @Override
+    public RemoteFSElemFactory getFactory()
+    {
+        return factory;
+    }
+
+
 
 }

@@ -65,7 +65,19 @@ class FCEPort
     boolean matches( FceEvent ev )
     {
         String path = ev.getPath();
-        return path.startsWith(param.getPath().getPath());
+        if (path.startsWith(param.getPath().getPath()))
+        {
+            int plen = param.getPath().getPath().length();
+            // SAME SIZE
+            if (path.length() == plen)
+                return true;
+
+            // LONGER, THEN CHECK IF WE MATCH CORRECT PATH
+            char ch = path.charAt(plen);
+            if (ch == '/' || ch == '\\')
+                return true;
+        }
+        return false;
     }
 
     void addEvent( FceEvent ev )

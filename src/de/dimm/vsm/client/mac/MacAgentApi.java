@@ -5,11 +5,10 @@
 package de.dimm.vsm.client.mac;
 
 import de.dimm.vsm.client.unix.*;
-import com.thoughtworks.xstream.XStream;
 import de.dimm.vsm.Utilities.CryptTools;
-import de.dimm.vsm.Utilities.ZipUtilities;
-import de.dimm.vsm.client.AttributeContainerImpl;
+import de.dimm.vsm.client.FSElemAccessor;
 import de.dimm.vsm.client.NetAgentApi;
+import de.dimm.vsm.client.RemoteFSElemFactory;
 import de.dimm.vsm.client.cdp.CDP_Param;
 import de.dimm.vsm.client.cdp.CdpHandler;
 import de.dimm.vsm.client.cdp.FCECdpHandler;
@@ -18,8 +17,6 @@ import de.dimm.vsm.client.cdp.PlatformData;
 import de.dimm.vsm.client.cdp.fce.VSMCDPEventProcessor;
 import de.dimm.vsm.client.cdp.fce.VSMFCEEventSource;
 import de.dimm.vsm.hash.HashFunctionPool;
-import de.dimm.vsm.net.AttributeContainer;
-import de.dimm.vsm.net.AttributeList;
 import de.dimm.vsm.net.CdpTicket;
 import de.dimm.vsm.net.interfaces.AgentApi;
 import de.dimm.vsm.net.RemoteFSElem;
@@ -67,43 +64,22 @@ public class MacAgentApi extends NetAgentApi
 
     String cdpIpFilter = null;
 
+    MacFSElemAccessor _fsAccess;
+    RemoteFSElemFactory _factory;
+
+
     @Override
-    public ArrayList<RemoteFSElem> list_dir( RemoteFSElem dir, boolean lazyAclInfo )
+    public FSElemAccessor getFSElemAccessor()
     {
-
-        File fh = new File(dir.getPath());
-        File[] files = fh.listFiles();
-
-
-        ArrayList<RemoteFSElem> list = new ArrayList<RemoteFSElem>();
-        if (files == null)
-        {
-            System.out.println("No files for " + dir.getPath());
-            return list;
-        }
-        detectRsrcMode(files);
-
-        Arrays.sort(files, new FileComparator());
-
-
-        for (int i = 0; i < files.length; i++)
-        {
-            File file = files[i];
-
-            // TODO: SWITCH DEPENDING ON ACTUAL FS
-
-            if (isRsrcEntry(file))
-            {
-                continue;
-            }
-
-            //if ()
-            RemoteFSElem elem = factory.create_elem(file, lazyAclInfo);
-
-            list.add(elem);
-        }
-        return list;
+        return _fsAccess;
     }
+
+    @Override
+    public RemoteFSElemFactory getFsFactory()
+    {
+        return _factory;
+    }
+
 
 
 
@@ -111,7 +87,7 @@ public class MacAgentApi extends NetAgentApi
     {
         this.hash_pool = hash_pool;
 
-        fsAcess = new MacFSElemAccessor(this);
+        _fsAccess = new MacFSElemAccessor(this);
         
         options = new Properties();
 
@@ -121,26 +97,26 @@ public class MacAgentApi extends NetAgentApi
 
        
         //if ()
-        factory = new MacRemoteFSElemFactory();
+        _factory = new MacRemoteFSElemFactory();
         this.cdpIpFilter = cdpIpFilter;
         
     }
 
     private MacFSElemAccessor getNativeAccesor()
     {
-        return (MacFSElemAccessor) fsAcess;
+        return  _fsAccess;
     }
 
     void detectVolumeType(File f)
     {
-        factory.getFsName(f.getPath());
+        _factory.getFsName(f.getPath());
 
     }
     
     
 
     @Override
-    protected void detectRsrcMode( File[] list )
+    protected void detectRsrcMode( File parent, File[] list )
     {
         if (rsrcMode == RSRC_HFS)
             return;
@@ -213,7 +189,6 @@ public class MacAgentApi extends NetAgentApi
         catch (IOException iOException)
         {
             System.out.println("IOException in read: " + iOException.getMessage());
-            iOException.printStackTrace();
             return null;
         }
 
@@ -359,30 +334,6 @@ public class MacAgentApi extends NetAgentApi
         return null;
     }
 
-    @Override
-    public boolean create_dir( RemoteFSElem dir )
-    {
-        File f = new File(dir.getPath());
-        try
-        {
-            if (f.mkdir())
-            {
-                getNativeAccesor().setFiletime( f.getPath(), dir );
-
-                String aclinfoData = dir.getAclinfoData();
-                if (aclinfoData != null)
-                {
-                    AttributeContainer ac = AttributeContainer.unserialize(aclinfoData);
-                    AttributeContainerImpl.set(dir, ac);
-                }
-                return true;
-            }
-        }
-        catch (Exception e)
-        {
-        }
-        return false;
-    }
 
 
 
@@ -417,23 +368,23 @@ public class MacAgentApi extends NetAgentApi
     }
 
    
-
-    @Override
-    public AttributeList get_attributes( RemoteFSElem elem )
-    {
-        try
-        {
-            AttributeList list = getNativeAccesor().get_attributes(elem);
-
-            return list;
-        }
-        catch (Exception e)
-        {
-            System.out.println("Exception during get_attributes of " + elem.getPath() + ": " + e.getMessage());
-            return null;
-        }
-        
-    }
+//
+//    @Override
+//    public AttributeList get_attributes( RemoteFSElem elem )
+//    {
+//        try
+//        {
+//            AttributeList list = factory.get_attributes(elem);
+//
+//            return list;
+//        }
+//        catch (Exception e)
+//        {
+//            System.out.println("Exception during get_attributes of " + elem.getPath() + ": " + e.getMessage());
+//            return null;
+//        }
+//
+//    }
 
 
     @Override
@@ -447,46 +398,14 @@ public class MacAgentApi extends NetAgentApi
     @Override
     public boolean set_filetimes( RemoteFSElemWrapper wrapper )
     {
-        RemoteFSElem elem = fsAcess.get_handleData(wrapper).getElem();
+        RemoteFSElem elem = getFSElemAccessor().get_handleData(wrapper).getElem();
 
         getNativeAccesor().setFiletime(elem.getPath(), elem);
 
         return true;
     }
-    @Override
-    public boolean set_attributes( RemoteFSElemWrapper wrapper )
-    {
-        boolean ret = true;
-        RemoteFSElem elem = fsAcess.get_handleData(wrapper).getElem();
-
-        try
-        {
-            fsAcess.setAttributes(elem);
-        }
-        catch (IOException iOException)
-        {
-            ret = false;
-        }
-        getNativeAccesor().setFiletime(elem.getPath(), elem);
-
-        return ret;
-    }
 
    
-    @Override
-    public String readAclInfo( RemoteFSElem dir )
-    {
-        AttributeList attrs = get_attributes(dir);
-        if (attrs == null)
-            return null;
-
-        if (attrs.getList().isEmpty())
-            return null;
-        
-        XStream xs = new XStream();
-        String s = ZipUtilities.compress(xs.toXML(attrs));
-        return s;
-    }
 
 
 

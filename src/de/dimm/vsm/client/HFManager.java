@@ -45,10 +45,10 @@ class HFEntry
 
 public abstract class HFManager
 {
-    protected RemoteFSElemFactory factory;
-
+   
     HashMap<String, HFEntry> hfMap = new HashMap<String, HFEntry>();
 
+    public abstract RemoteFSElemFactory getFactory();
 
     public RemoteFSElem checkHotfolder( RemoteFSElem mountPath, long getSetttleTime_s, final String filter, boolean onlyFiles, boolean onlyDirs, int itemIdx )
     {
@@ -121,7 +121,7 @@ public abstract class HFManager
                 }
 
                 hfMap.remove(hashPath);
-                RemoteFSElem ret = factory.create_elem(file,/*withAcl*/ true);
+                RemoteFSElem ret = getFactory().create_elem(file,/*withAcl*/ true);
                 return ret;
             }
         }
@@ -133,7 +133,7 @@ public abstract class HFManager
         long now = System.currentTimeMillis();
         boolean ret = true;
 
-        RemoteFSElem  elem = factory.create_elem(file,/*withAcl*/ true);
+        RemoteFSElem  elem = getFactory().create_elem(file,/*withAcl*/ true);
 
         long newest_ts = elem.getCtimeMs();
         if (newest_ts < elem.getMtimeMs())

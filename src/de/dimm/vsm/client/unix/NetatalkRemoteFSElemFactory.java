@@ -6,6 +6,7 @@
 package de.dimm.vsm.client.unix;
 
 import de.dimm.vsm.client.AttributeContainerImpl;
+import de.dimm.vsm.client.NetAgentApi;
 import de.dimm.vsm.client.RemoteFSElemFactory;
 import de.dimm.vsm.client.jna.PosixWrapper;
 import de.dimm.vsm.net.AttributeContainer;
@@ -13,7 +14,6 @@ import de.dimm.vsm.net.RemoteFSElem;
 import de.dimm.vsm.records.FileSystemElemNode;
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.FileSystems;
 import java.util.HashMap;
 import org.jruby.ext.posix.FileStat;
 import org.jruby.ext.posix.Group;
@@ -25,7 +25,7 @@ import org.jruby.ext.posix.Passwd;
  *
  * @author Administrator
  */
-public class NetatalkRemoteFSElemFactory implements RemoteFSElemFactory
+public class NetatalkRemoteFSElemFactory extends RemoteFSElemFactory
 {
 
     String getTypFromStat(FileStat stat)
@@ -141,30 +141,31 @@ public class NetatalkRemoteFSElemFactory implements RemoteFSElemFactory
         return elem;
     }
     
-    static String getADPath( String path )
+    @Override
+    public String getXAPath( String path )
     {
         StringBuilder sb = new StringBuilder(path);
         int fidx = sb.lastIndexOf(File.separator);
         if (fidx > 0)
             sb.insert(fidx, "/.AppleDouble");
-        
+
         return sb.toString();
     }
 
 
-    static long get_flen( File fh )
+    long get_flen( File fh )
     {
         return fh.length();
     }
-    static String get_path( File fh )
+    String get_path( File fh )
     {
         return fh.getAbsolutePath();
     }
 
     
-    public static long evalStreamLen( File fh )
+    public long evalStreamLen( File fh )
     {
-        String adpPath = getADPath( fh.getAbsolutePath() );
+        String adpPath = getXAPath( fh.getAbsolutePath() );
 
         File f = new File(adpPath);
 
@@ -250,7 +251,7 @@ public class NetatalkRemoteFSElemFactory implements RemoteFSElemFactory
         return attrHashMap.get(hash);
     }
 
-     @Override
+    @Override
     public synchronized  String readAclInfo( RemoteFSElem elem )
     {
         try
@@ -267,6 +268,8 @@ public class NetatalkRemoteFSElemFactory implements RemoteFSElemFactory
                     putHashMap( hash, aclStream );
                 }
                 elem.setAclinfoData(aclStream);
+
+                // THIS IS HISTORICAL, MEANS LIKE WIN,
                 elem.setAclinfo(RemoteFSElem.ACLINFO_WIN);
                 return aclStream;
             }
@@ -284,5 +287,39 @@ public class NetatalkRemoteFSElemFactory implements RemoteFSElemFactory
         // TODO
         return "zfs";
     }
+
+   
+
+    @Override
+    public void writeAclInfo( RemoteFSElem elem ) throws IOException
+    {
+        try
+        {
+            if (elem.getAclinfo() == RemoteFSElem.ACLINFO_WIN || elem.getAclinfo() == 0)
+            {
+                AttributeContainer ac = AttributeContainer.unserialize(elem.getAclinfoData());
+                if (ac != null)
+                {
+                    AttributeContainerImpl.set(elem, ac);
+                }
+            }
+        }
+        catch (Exception exception)
+        {
+            throw new IOException("Error while setting ACL and FinderInfo:" + exception.getMessage() );
+        }
+    }
+
+    @Override
+    public boolean mkDir( File f )
+    {
+        boolean ret = f.mkdir();
+
+        File rsrc = new File(f, NetAgentApi.NETATALK_RSRCDIR);
+        rsrc.mkdir();
+        return ret;
+    }
+
+
    
 }

@@ -9,27 +9,20 @@ import de.dimm.vsm.net.AttributeContainer;
 import de.dimm.vsm.net.RemoteFSElem;
 import de.dimm.vsm.net.VSMAclEntry;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.AclEntry;
 import java.nio.file.attribute.AclEntry.Builder;
-import java.nio.file.attribute.AclEntryPermission;
-import java.nio.file.attribute.AclEntryType;
 import java.nio.file.attribute.AclFileAttributeView;
 import java.nio.file.attribute.GroupPrincipal;
-import java.nio.file.attribute.UserDefinedFileAttributeView;
 import java.nio.file.attribute.UserPrincipal;
 import java.nio.file.attribute.UserPrincipalLookupService;
 import java.nio.file.attribute.UserPrincipalNotFoundException;
-import java.security.Principal;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 /**
  *
@@ -99,52 +92,52 @@ public class AttributeContainerImpl
                 return false;
             }
         }
-
-        UserDefinedFileAttributeView uview = Files.getFileAttributeView(file, UserDefinedFileAttributeView.class);
-        if (allowUserAttributes && uview != null)
-        {
-            try
-            {
-                 List<String>names = uview.list();
-                 HashMap<String,byte[]> m = new HashMap<String,byte[]>();
-                 for (int i = 0; i < names.size(); i++)
-                 {
-                     String name = names.get(i);
-                     
-                     boolean skip = false;
-                     for (int j = 0; j < skipUserDefinedAttributes.length; j++)
-                     {
-                         String string = skipUserDefinedAttributes[j];
-                         if (string.equals(name))
-                         {
-                             skip = true;
-                             break;
-                         }                         
-                     }
-                     if (skip)
-                         continue;
-
-                     int len = uview.size(name);
-                     if (len > 0)
-                     {
-                         ByteBuffer buf = ByteBuffer.allocate(len);
-                         uview.read(name, buf);
-                         byte[] b = buf.array();
-                         m.put(name, b);
-                     }
-                 }
-
-                 if (!m.isEmpty())
-                 {
-                    ac.setUserAttributes(m);
-                 }
-            }
-            catch (Exception iOException)
-            {
-                System.out.println("Error getting UserDefinedFileAttributeView for " + file.toString() + ": " + iOException.getMessage());
-                return false;
-            }
-        }
+//
+//        UserDefinedFileAttributeView uview = Files.getFileAttributeView(file, UserDefinedFileAttributeView.class);
+//        if (allowUserAttributes && uview != null)
+//        {
+//            try
+//            {
+//                 List<String>names = uview.list();
+//                 HashMap<String,byte[]> m = new HashMap<String,byte[]>();
+//                 for (int i = 0; i < names.size(); i++)
+//                 {
+//                     String name = names.get(i);
+//
+//                     boolean skip = false;
+//                     for (int j = 0; j < skipUserDefinedAttributes.length; j++)
+//                     {
+//                         String string = skipUserDefinedAttributes[j];
+//                         if (string.equals(name))
+//                         {
+//                             skip = true;
+//                             break;
+//                         }
+//                     }
+//                     if (skip)
+//                         continue;
+//
+//                     int len = uview.size(name);
+//                     if (len > 0)
+//                     {
+//                         ByteBuffer buf = ByteBuffer.allocate(len);
+//                         uview.read(name, buf);
+//                         byte[] b = buf.array();
+//                         m.put(name, b);
+//                     }
+//                 }
+//
+//                 if (!m.isEmpty())
+//                 {
+//                    ac.setUserAttributes(m);
+//                 }
+//            }
+//            catch (Exception iOException)
+//            {
+//                System.out.println("Error getting UserDefinedFileAttributeView for " + file.toString() + ": " + iOException.getMessage());
+//                return false;
+//            }
+//        }
         return true;
     }
 
@@ -315,29 +308,29 @@ public class AttributeContainerImpl
                 return false;
             }
         }
-        UserDefinedFileAttributeView uview = Files.getFileAttributeView(file, UserDefinedFileAttributeView.class);
-
-        // TODO: HANDLE CROSS PLATFORM RESTORE
-        if (ac.getUserAttributes() != null && uview != null)
-        {
-            try
-            {
-                //List<String>names = uview.list();
-                Map<String,byte[]> m = ac.getUserAttributes();
-
-                Set<String> keys = m.keySet();
-                for (String key : keys)
-                {
-                     ByteBuffer buf = ByteBuffer.wrap(m.get(key));
-                     uview.write(key, buf);
-                }
-            }
-            catch (Exception iOException)
-            {
-                System.out.println("Error setting UserDefinedFileAttributeView for " + file.toString() + ": " + iOException.getMessage());
-                return false;
-            }
-        }
+//        UserDefinedFileAttributeView uview = Files.getFileAttributeView(file, UserDefinedFileAttributeView.class);
+//
+//        // TODO: HANDLE CROSS PLATFORM RESTORE
+//        if (ac.getUserAttributes() != null && uview != null)
+//        {
+//            try
+//            {
+//                //List<String>names = uview.list();
+//                Map<String,byte[]> m = ac.getUserAttributes();
+//
+//                Set<String> keys = m.keySet();
+//                for (String key : keys)
+//                {
+//                     ByteBuffer buf = ByteBuffer.wrap(m.get(key));
+//                     uview.write(key, buf);
+//                }
+//            }
+//            catch (Exception iOException)
+//            {
+//                System.out.println("Error setting UserDefinedFileAttributeView for " + file.toString() + ": " + iOException.getMessage());
+//                return false;
+//            }
+//        }
         return true;
     }
 

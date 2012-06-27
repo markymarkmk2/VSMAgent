@@ -5,9 +5,9 @@
 
 package de.dimm.vsm.client;
 
-import de.dimm.vsm.net.AttributeContainer;
 import de.dimm.vsm.net.RemoteFSElem;
 import de.dimm.vsm.net.RemoteFSElemWrapper;
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -27,8 +27,10 @@ public abstract class FSElemAccessor
     private HashMap<Long, MultiThreadedFileReader> mtfrMap;
     protected HashMap<Long,FileHandleData> hash_map;
 
+    protected NetAgentApi api;
     public FSElemAccessor( NetAgentApi api )
     {
+        this.api = api;
         mtfrMap = new HashMap<Long, MultiThreadedFileReader>();
         mtfrBufferList = new ArrayList<MultiThreadedFileReader>();
 
@@ -112,14 +114,6 @@ public abstract class FSElemAccessor
     {
         return (flags & flag) == flag;
     }
-    public void setAttributes( RemoteFSElem dir ) throws IOException
-    {
-        if (dir.getAclinfoData() != null)
-        {
-            AttributeContainer ac = AttributeContainer.unserialize(dir.getAclinfoData());
-            AttributeContainerImpl.set(dir, ac);
-        }
-    }
     
 
     public FileHandleData get_handleData( RemoteFSElemWrapper wrapper)
@@ -130,8 +124,48 @@ public abstract class FSElemAccessor
     }
 
     public abstract boolean createSymlink( String path, String linkPath );
+    
+    public boolean mkDir( File f )
+    {
+         return api.getFsFactory().mkDir(f);
+    }
 
+    public static String[] nulltermList2Array( byte[] arr )
+    {
+        if (arr.length == 0)
+        {
+            return new String[0];
+        }
 
+        ArrayList<String> l = new ArrayList<String>();
+
+        int start = 0;
+        int end = 0;
+
+        while (true)
+        {
+            end++;
+            if (end == arr.length)
+            {
+                if (end - start > 1)
+                {
+                    l.add(new String(arr, start, end - start - 1));
+                }
+
+                break;
+            }
+            else if (arr[end] == 0)
+            {
+                if (start < end)
+                    l.add(new String(arr, start,  end - start));
+
+                start = end + 1;
+                if (start >= arr.length)
+                    break;
+            }
+        }
+        return l.toArray(new String[0]);
+    }
 
 
 }

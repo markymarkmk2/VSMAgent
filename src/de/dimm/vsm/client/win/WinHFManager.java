@@ -6,10 +6,7 @@
 package de.dimm.vsm.client.win;
 
 import de.dimm.vsm.client.HFManager;
-import de.dimm.vsm.records.HotFolder;
-import java.io.File;
-import java.io.IOException;
-import java.io.RandomAccessFile;
+import de.dimm.vsm.client.RemoteFSElemFactory;
 
 /**
  *
@@ -18,9 +15,19 @@ import java.io.RandomAccessFile;
 public class WinHFManager extends HFManager
 {
 
+    WinRemoteFSElemFactory factory;
+
     public WinHFManager()
     {
         factory = new WinRemoteFSElemFactory();
     }
+
+    @Override
+    public RemoteFSElemFactory getFactory()
+    {
+        return factory;
+    }
+
+
 
 }

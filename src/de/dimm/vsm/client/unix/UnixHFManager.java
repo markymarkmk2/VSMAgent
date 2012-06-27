@@ -6,6 +6,7 @@
 package de.dimm.vsm.client.unix;
 
 import de.dimm.vsm.client.HFManager;
+import de.dimm.vsm.client.RemoteFSElemFactory;
 
 /**
  *
@@ -13,9 +14,15 @@ import de.dimm.vsm.client.HFManager;
  */
 public class UnixHFManager extends HFManager
 {
-    public UnixHFManager()
+    UnixAgentApi api;
+    public UnixHFManager(UnixAgentApi api)
     {
-        factory = new NetatalkRemoteFSElemFactory();
+        this.api = api;
+    }
+    @Override
+    public RemoteFSElemFactory getFactory()
+    {
+        return api.getFsFactory();
     }
 
 }

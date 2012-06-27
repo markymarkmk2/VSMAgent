@@ -7,7 +7,6 @@ package de.dimm.vsm.client.unix;
 
 import de.dimm.vsm.client.FSElemAccessor;
 import de.dimm.vsm.client.FileHandleData;
-import de.dimm.vsm.client.NetAgentApi;
 import de.dimm.vsm.client.jna.PosixWrapper;
 import de.dimm.vsm.net.interfaces.AgentApi;
 import de.dimm.vsm.net.RemoteFSElem;
@@ -44,8 +43,6 @@ class UnixFileHandleData extends FileHandleData
         }
         return true;
     }
-
-
 }
 /**
  *
@@ -55,9 +52,10 @@ public class UnixFSElemAccessor extends FSElemAccessor
 {
     
     static long newHandleValue = 1;
+    
 
    
-    public UnixFSElemAccessor( NetAgentApi api)
+    public UnixFSElemAccessor( UnixAgentApi api)
     {
         super(api);        
     }
@@ -95,7 +93,7 @@ public class UnixFSElemAccessor extends FSElemAccessor
     public RemoteFSElemWrapper open_xa_handle( RemoteFSElem elem, int flags )
     {
         RandomAccessFile fh = null;
-        String path = NetatalkRemoteFSElemFactory.getADPath( elem.getPath() );
+        String path = getXAPath( elem.getPath() );
         try
         {
             if (flags == AgentApi.FL_RDONLY)
@@ -157,6 +155,7 @@ public class UnixFSElemAccessor extends FSElemAccessor
 
         return data.handle;
     }
+    @Override
     public FileHandleData get_handleData( RemoteFSElemWrapper wrapper)
     {
         FileHandleData data = hash_map.get(wrapper.getHandle());
@@ -177,6 +176,8 @@ public class UnixFSElemAccessor extends FSElemAccessor
 
         PosixWrapper.getPosix().utimes(path, atimes, mtimes );
     }
+
+    @Override
     public boolean createSymlink( String path, String linkPath )
     {
         POSIX posix = PosixWrapper.getPosix();
@@ -189,6 +190,13 @@ public class UnixFSElemAccessor extends FSElemAccessor
         {
         }
         return false;
-   }
+    }
+
+
+
+    private String getXAPath( String path )
+    {
+         return api.getFsFactory().getXAPath(path);
+    }
    
 }

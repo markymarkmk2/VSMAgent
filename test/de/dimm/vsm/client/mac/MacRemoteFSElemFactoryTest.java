@@ -150,17 +150,17 @@ public class MacRemoteFSElemFactoryTest {
 //        About.main(args);
         args[0] = "/Volumes/Macintosh HD/Users/mw/G4_Save/CW10 Gold/CodeWarrior Quick Start";
         
-        boolean arg = instance.isReffable( args[0]);
-        
-        assertTrue(arg);
-        
-        arg = instance.isReffable( "/asdhajsh");
-        
-        assertFalse(arg);
-        
-        instance.FInfoDemo(args[0] );
-        
-        instance.FInfoDemo("/Volumes/Macintosh HD/Users/mw/CodeWarrior Quick Start");
+//        boolean arg = instance.isReffable( args[0]);
+//
+//        assertTrue(arg);
+//
+//        arg = instance.isReffable( "/asdhajsh");
+//
+//        assertFalse(arg);
+//
+//        instance.FInfoDemo(args[0] );
+//
+//        instance.FInfoDemo("/Volumes/Macintosh HD/Users/mw/CodeWarrior Quick Start");
         
     }
     

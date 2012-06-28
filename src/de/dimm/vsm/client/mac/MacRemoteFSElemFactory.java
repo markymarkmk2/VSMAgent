@@ -362,27 +362,15 @@ public class MacRemoteFSElemFactory extends RemoteFSElemFactory
             else
             {
 
-                try
+                try 
                 {
-                    AttributeContainer info = new AttributeContainer();
-
-                    if (AttributeContainerImpl.fill( elem, info ))
-                    {
-                        int hash = info.hashCode();
-                        String aclStream = getHashMap(hash);
-                        if (aclStream == null)
-                        {
-                            aclStream = AttributeContainer.serialize(info);
-                            putHashMap( hash, aclStream );
-                        }
-                        elem.setAclinfoData(aclStream);
-                        elem.setAclinfo(RemoteFSElem.ACLINFO_WIN);
-                    }
-                }
-                catch (Exception exc)
+                    elem.setAclinfoData(readAclInfo(elem));
+                } 
+                catch (IOException iOException) 
                 {
-                    exc.printStackTrace();
+                    System.out.println("DFehler beim Lesen der Attribute " + iOException.getMessage() );
                 }
+                elem.setAclinfo(RemoteFSElem.ACLINFO_OSX);
             }
         }
        

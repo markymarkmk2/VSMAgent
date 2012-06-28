@@ -6,74 +6,12 @@
 package de.dimm.vsm.client.cdp.fce;
 
 import de.dimm.vsm.client.cdp.CDP_Param;
-import de.dimm.vsm.client.cdp.FCECdpHandler;
 import de.dimm.vsm.client.cdp.FCEEventSource;
 import de.dimm.vsm.client.cdp.FceEvent;
 import de.dimm.vsm.net.CdpTicket;
-import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
 import java.net.SocketException;
-import java.net.SocketTimeoutException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.TimeUnit;
-
-class FCEPort
-{
-    CDP_Param param;
-    ArrayBlockingQueue<FceEvent> fce_queue;
-
-    public FCEPort( CDP_Param param)
-    {
-        this.param = param;
-        this.fce_queue = new ArrayBlockingQueue<FceEvent>(50);
-    }
 
 
-
-    @Override
-    public boolean equals( Object obj )
-    {
-        if (obj instanceof FCEPort)
-        {
-            FCEPort p = (FCEPort)obj;
-            return p.param.getTicket().equals(param.getTicket());
-        }
-        return super.equals(obj);
-    }
-
-    @Override
-    public int hashCode()
-    {
-        return param.getTicket().hashCode();
-    }
-
-    String getPath()
-    {
-        return param.getPath().getPath();
-    }
-
-    ArrayBlockingQueue getQueue()
-    {
-        return fce_queue;
-    }
-
-    boolean matches( FceEvent ev )
-    {
-        String path = ev.getPath();
-        return path.startsWith(param.getPath().getPath());
-    }
-
-    void addEvent( FceEvent ev )
-    {
-        fce_queue.add(ev);
-    }
-}
 
 
 

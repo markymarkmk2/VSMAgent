@@ -747,7 +747,10 @@ public abstract class NetAgentApi implements AgentApi
 
         try
         {
-            getFsFactory().writeAclInfo(elem);
+            if (elem.getAclinfoData() != null)
+            {
+                getFsFactory().writeAclInfo(elem);
+            }
         }
         catch (IOException iOException)
         {
@@ -784,7 +787,10 @@ public abstract class NetAgentApi implements AgentApi
             {
                 try
                 {
-                    getFsFactory().writeAclInfo(elem);
+                    if (elem.getAclinfoData() != null)
+                    {
+                        getFsFactory().writeAclInfo(elem);
+                    }
                 }
                 catch (IOException iOException)
                 {

@@ -91,7 +91,7 @@ public class MacRemoteFSElemFactory extends RemoteFSElemFactory
     @Override
     public String getXAPath( String path )
     {
-        throw new UnsupportedOperationException("Not supported");
+        return getRsrcPath(path);
     }
 
     static public class StatStructure extends Structure

@@ -70,7 +70,20 @@ public class UnixAgentApi extends NetAgentApi
         }
         return netatalk_factory;
     }
+    String getRsrcModeName( int r )
+    {
+        switch(r)
+        {
+            case RSRC_HFS: return "HFS+";
+            case RSRC_USCORE: return "Apple UnderScore";
+            case RSRC_ES: return "Helios EtherShare";
+            case RSRC_NETATALK: return "Netatalk";
+            //case RSRC_XINET: return xinet_factory;
+        }
+        return "unknown";
+    }
 
+    int lastrsrcMode = -1;
     @Override
     public int getRsrcMode()
     {
@@ -80,6 +93,11 @@ public class UnixAgentApi extends NetAgentApi
         if (forceRsrcMode != -1)
             r = forceRsrcMode;
 
+        if (r != lastrsrcMode)
+        {
+            lastrsrcMode = r;
+            System.out.println("Switching to RsrcMode " + getRsrcModeName(r));
+        }
         return r;
     }
  

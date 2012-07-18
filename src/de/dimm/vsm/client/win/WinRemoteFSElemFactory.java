@@ -41,6 +41,10 @@ public class WinRemoteFSElemFactory extends RemoteFSElemFactory
     }
     public static String getLongPath( String fpath )
     {
+        // CORRECT DRIVE PATH
+        if (fpath.length() == 3 && fpath.charAt(1) == ':')
+            return fpath.substring(0, 2);
+
         if (fpath.length() > 200)
         {
             // DRIVE ?

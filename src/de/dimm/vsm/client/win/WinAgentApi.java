@@ -485,6 +485,10 @@ public class WinAgentApi extends NetAgentApi
             getNativeAccesor().setFiletime(h, elem);
             return true;
         }
+        else
+        {
+            set_filetimes_named( elem );
+        }
         return false;
     }
 

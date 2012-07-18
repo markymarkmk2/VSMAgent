@@ -164,7 +164,9 @@ class HashRunner implements Runnable
     @Override
     public void run()
     {
-        Base64 b64 = new Base64();
+        // CREATE URLSAFE ENCODE
+        Base64 b64 = new Base64(0, null, true);
+
         Digest digest = new fr.cryptohash.SHA1();
         HashReadyLock lock = null;
         FileCacheElem fce = null;

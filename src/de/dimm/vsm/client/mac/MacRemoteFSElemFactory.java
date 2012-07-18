@@ -304,7 +304,7 @@ public class MacRemoteFSElemFactory extends RemoteFSElemFactory
         int ret = -1;
         try
         {
-            stat = posix.stat(path);
+            stat = posix.lstat(path);
         }
         catch (Exception e)
         {

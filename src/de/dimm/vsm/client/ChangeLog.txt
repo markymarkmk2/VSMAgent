@@ -1,3 +1,9 @@
+Veränderungen in V0.8.7
+UPD: Compression und Encryption bei Kommunikation mit Agent
+
+Veränderungen in V0.8.6
+FIX: restore Filetime
+
 Veränderungen in V0.8.5
 UPD: EtherShare Agent alpha
 UPD: UScore Agent alpha

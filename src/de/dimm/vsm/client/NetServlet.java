@@ -6,12 +6,12 @@
 package de.dimm.vsm.client;
 
 import com.caucho.hessian.server.HessianServlet;
-import de.dimm.vsm.client.mac.MacAgentApi;
 import de.dimm.vsm.client.unix.UnixAgentApi;
 import de.dimm.vsm.client.win.WinAgentApi;
 import de.dimm.vsm.hash.HashFunctionPool;
 import de.dimm.vsm.net.AttributeList;
 import de.dimm.vsm.net.CdpTicket;
+import de.dimm.vsm.net.CompEncDataResult;
 import de.dimm.vsm.net.HashDataResult;
 import de.dimm.vsm.net.RemoteFSElem;
 import de.dimm.vsm.net.RemoteFSElemWrapper;
@@ -118,6 +118,11 @@ public class NetServlet extends HessianServlet implements AgentApi
     {
         return api.read(file, pos, bsize);
     }
+    @Override
+    public CompEncDataResult readEncryptedCompressed( RemoteFSElemWrapper file, long pos, int bsize, boolean enc, boolean comp ) throws IOException
+    {
+        return api.readEncryptedCompressed(file, pos, bsize, enc, comp);
+    }
 
     @Override
     public int write( RemoteFSElemWrapper file, byte[] data, long pos )
@@ -147,6 +152,12 @@ public class NetServlet extends HessianServlet implements AgentApi
     public HashDataResult read_and_hash( RemoteFSElemWrapper file, long pos, int bsize ) throws IOException
     {
         return api.read_and_hash(file, pos, bsize);
+    }
+
+    @Override
+    public CompEncDataResult read_and_hash_encrypted_compressed( RemoteFSElemWrapper file, long pos, int bsize, boolean enc, boolean comp ) throws IOException
+    {
+        return api.read_and_hash_encrypted_compressed(file, pos, bsize, enc, comp);
     }
 
     @Override
@@ -280,6 +291,13 @@ public class NetServlet extends HessianServlet implements AgentApi
     {
         api.getFSElemAccessor().resetFileReaders();
     }
+
+    @Override
+    public int writeEncryptedCompressed( RemoteFSElemWrapper file, byte[] data, long pos, int realLen, boolean enc, boolean comp )
+    {
+        return api.writeEncryptedCompressed(file, data, pos, realLen, enc, comp);
+    }
+
 
 
 

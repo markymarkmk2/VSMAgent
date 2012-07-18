@@ -5,8 +5,10 @@
 
 package de.dimm.vsm.client;
 
+import com.ning.compress.lzf.LZFInputStream;
 import de.dimm.vsm.Utilities.CommThread;
 import de.dimm.vsm.Utilities.CryptTools;
+import de.dimm.vsm.Utilities.ZipUtilities;
 import de.dimm.vsm.client.cdp.CdpHandler;
 import de.dimm.vsm.fsutils.MountVSMFS;
 import de.dimm.vsm.fsutils.VSMFS;
@@ -14,6 +16,7 @@ import de.dimm.vsm.hash.HashFunctionPool;
 import de.dimm.vsm.net.AttributeContainer;
 import de.dimm.vsm.net.AttributeList;
 import de.dimm.vsm.net.CdpTicket;
+import de.dimm.vsm.net.CompEncDataResult;
 import de.dimm.vsm.net.HashDataResult;
 import de.dimm.vsm.net.RemoteFSElem;
 import de.dimm.vsm.net.RemoteFSElemWrapper;
@@ -22,6 +25,8 @@ import de.dimm.vsm.net.interfaces.AgentApi;
 import de.dimm.vsm.net.interfaces.SnapshotHandle;
 import de.dimm.vsm.net.interfaces.SnapshotHandler;
 import fr.cryptohash.Digest;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
@@ -191,6 +196,8 @@ public abstract class NetAgentApi implements AgentApi
         p.setProperty(OP_OS, System.getProperty("os.name"));
         p.setProperty(OP_OS_VER, System.getProperty("os.version"));
         p.setProperty(OP_AG_VER, Main.get_version());
+        p.setProperty(OP_AG_ENC, Boolean.TRUE.toString());
+        p.setProperty(OP_AG_COMP, Boolean.TRUE.toString());
 
         return p;
     }
@@ -379,6 +386,33 @@ public abstract class NetAgentApi implements AgentApi
 
         return data;
     }
+    @Override
+    public CompEncDataResult readEncryptedCompressed( RemoteFSElemWrapper wrapper, long pos, int bsize, boolean enc, boolean comp )
+    {
+        byte[] data = read(wrapper, pos, bsize);
+        if (data == null)
+            return null;
+
+
+        // FIRST COMPRESS, THEN ENCRYPT
+        if (comp)
+        {
+            data = ZipUtilities.lzf_compressblock(data);
+            if (data == null)
+                return null;
+        }
+        int compLen = data.length;
+
+        if (enc)
+            data = CryptTools.encryptXTEA8(data);
+
+        int encLen = data.length;
+        
+        CompEncDataResult res = new CompEncDataResult(data, compLen, encLen);
+
+
+        return res;
+    }
 
     public byte[] rawRead( RemoteFSElemWrapper wrapper, long pos, int bsize )
     {
@@ -389,9 +423,40 @@ public abstract class NetAgentApi implements AgentApi
     public abstract byte[] rawRead( byte[] data, RemoteFSElemWrapper wrapper, long pos, int bsize );
     
     
+   @Override
+    public CompEncDataResult read_and_hash_encrypted_compressed( RemoteFSElemWrapper wrapper, long pos, int bsize, boolean enc, boolean comp ) throws IOException
+    {
+        HashDataResult hdr = read_and_hash(wrapper, pos, bsize);
+
+        if (hdr == null)
+            return null;
+
+        byte[] data = hdr.getData();
+
+        // FIRST COMPRESS, THEN ENCRYPT
+        if (comp)
+        {
+            byte[] compData = ZipUtilities.lzf_compressblock(hdr.getData());
+            if (compData == null)
+                return null;
+
+            data = compData;
+        }
+        int compLen = data.length;
+
+        if (enc)
+        {
+            data = CryptTools.encryptXTEA8(data);
+        }
+        int encLen = data.length;
+
+        CompEncDataResult res = new CompEncDataResult(data, compLen, encLen, hdr.getHashValue());
+        
+        return res;
+    }
 
 
- @Override
+    @Override
     public HashDataResult read_and_hash( RemoteFSElemWrapper wrapper, long pos, int bsize ) throws IOException
     {
         byte[] data = null;
@@ -756,7 +821,7 @@ public abstract class NetAgentApi implements AgentApi
         {
             ret = false;
         }
-        set_filetimes_named( elem );
+        set_filetimes( wrapper );
 
         return ret;
     }
@@ -885,6 +950,20 @@ public abstract class NetAgentApi implements AgentApi
         {
         }
         return 0;
+    }
+
+    @Override
+    public int writeEncryptedCompressed( RemoteFSElemWrapper wrapper, byte[] data, long pos, int encLen, boolean enc, boolean comp )
+    {
+        if (enc)
+        {
+            data = CryptTools.decryptXTEA8(data, encLen);
+        }
+        if (comp)
+        {
+            data = ZipUtilities.lzf_decompressblock(data);
+        }
+        return write( wrapper, data, pos);
     }
 
 

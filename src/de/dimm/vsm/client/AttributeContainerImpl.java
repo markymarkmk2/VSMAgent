@@ -32,6 +32,34 @@ public class AttributeContainerImpl
 {
     public static boolean allowUserAttributes = false;
 
+    private static final int SYSLANG_UNDEFINED = -1;
+    private static final int SYSLANG_ENGLISH = 0;
+    private static final int SYSLANG_GERMAN = 1;
+    static int systemLang = SYSLANG_UNDEFINED;
+
+    private static boolean systemIsGerman()
+    {
+        if (systemLang == SYSLANG_UNDEFINED)
+        {
+            systemLang = SYSLANG_ENGLISH;
+
+            try
+            {
+                UserPrincipalLookupService usv = FileSystems.getDefault().getUserPrincipalLookupService();
+                UserPrincipal test = usv.lookupPrincipalByName("");
+                if (test != null && test.getName().startsWith("VORDEFINIERT"))
+                {
+                    systemLang = SYSLANG_GERMAN;
+                }
+            }
+            catch (IOException iOException)
+            {
+            }
+        }
+
+        return systemLang == SYSLANG_GERMAN;
+    }
+
     // SHOULD THIS BE CONFIGURED SOMEWHERE ELSE?
     static String[] skipUserDefinedAttributes = null;
 
@@ -206,23 +234,8 @@ public class AttributeContainerImpl
             try
             {
                 UserPrincipalLookupService usv = FileSystems.getDefault().getUserPrincipalLookupService();
-
-                boolean systemIsGerman = false;
-
-                try
-                {
-                    UserPrincipal test = usv.lookupPrincipalByName("");
-                    if (test != null && test.getName().startsWith("VORDEFINIERT"))
-                    {
-                        systemIsGerman = true;
-                    }
-                }
-                catch (IOException iOException)
-                {
-                }
-
                 
-                String name = mapPrincipal( ac.getUserName(), systemIsGerman );
+                String name = mapPrincipal( ac.getUserName(), systemIsGerman() );
                 try
                 {
                     UserPrincipal owner = usv.lookupPrincipalByName(name);
@@ -257,8 +270,7 @@ public class AttributeContainerImpl
                     }
 
 
-
-                    name = mapPrincipal( aclEntry.principalName(), systemIsGerman );
+                    name = mapPrincipal( aclEntry.principalName(), systemIsGerman() );
                     try
                     {
                         UserPrincipal aclOwner = null;

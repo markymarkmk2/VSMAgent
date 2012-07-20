@@ -447,7 +447,7 @@ public class WinAgentApi extends NetAgentApi
         CDP_Param cdp_param = new CDP_Param(addr, port, ssl, tcp, file, ticket, pd);
         CDPEventProcessor evp = new VSMCDPEventProcessor(cdp_param);
 
-        cdp_handler = new WinCdpHandler( cdp_param, evp );
+        cdp_handler = new WinCdpHandler( this, cdp_param, evp );
         
         if (cdp_handler.init_cdp())
         {

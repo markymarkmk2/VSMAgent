@@ -6,9 +6,11 @@
 package de.dimm.vsm.client.cdp;
 
 import de.dimm.vsm.Utilities.WinFileUtilities;
+import de.dimm.vsm.client.NetAgentApi;
 import de.dimm.vsm.client.RemoteFSElemFactory;
 import de.dimm.vsm.client.cdp.fce.FCEEventBuffer;
 import de.dimm.vsm.client.unix.NetatalkRemoteFSElemFactory;
+import de.dimm.vsm.client.win.WinRemoteFSElemFactory;
 import de.dimm.vsm.net.CdpEvent;
 import de.dimm.vsm.net.ExclListEntry;
 import de.dimm.vsm.net.RemoteFSElem;
@@ -90,6 +92,7 @@ public abstract class CdpHandler  implements Runnable
     FCEEventSource eventSource;
 
     FCEEventBuffer eventBuffer;
+    NetAgentApi agentApi;
 
    
 
@@ -134,8 +137,9 @@ public abstract class CdpHandler  implements Runnable
     }
     
    
-    public CdpHandler( CDP_Param p, FCEEventSource eventSource, CDPEventProcessor eventProcessor)
+    public CdpHandler( NetAgentApi agentApi, CDP_Param p, FCEEventSource eventSource, CDPEventProcessor eventProcessor)
     {
+        this.agentApi = agentApi;
         this.cdp_param = p;
         
         this.eventProcessor = eventProcessor;
@@ -147,7 +151,11 @@ public abstract class CdpHandler  implements Runnable
 
         eventBuffer = new FCEEventBuffer(cdp_param, eventProcessor);
 
-        factory = new NetatalkRemoteFSElemFactory();
+        if (agentApi != null)
+            factory = agentApi.getFsFactory();
+        else
+            // TEST UNIT ONLY
+            factory = new WinRemoteFSElemFactory();
 
     }
 

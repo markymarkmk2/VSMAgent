@@ -551,7 +551,7 @@ public final class FileSystemWatcher extends Notify
                 {
                     Entry<String,Key> e = it.next();
 
-                    if (e.getKey().matches(path))
+                    if (e.getValue().matches(path))
                     {
                         events.add(createEvent(e.getValue(), flag, path));
                         found = true;

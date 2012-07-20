@@ -5,6 +5,7 @@
 package de.dimm.vsm.client.cdp;
 
 
+import de.dimm.vsm.client.NetAgentApi;
 import de.dimm.vsm.net.RemoteFSElem;
 import de.dimm.vsm.net.interfaces.CDPEventProcessor;
 import java.net.SocketException;
@@ -32,9 +33,9 @@ public class FCECdpHandler extends CdpHandler
     public static final int FCE_PACKET_HEADER_SIZE = 8 + 1 + 1 + 4 + 2;
 
 
-    public FCECdpHandler(CDP_Param p, FCEEventSource eventSource, CDPEventProcessor eventProcessor)
+    public FCECdpHandler(NetAgentApi agentApi, CDP_Param p, FCEEventSource eventSource, CDPEventProcessor eventProcessor)
     {
-        super(p,  eventSource, eventProcessor);               
+        super(agentApi, p,  eventSource, eventProcessor);               
     }
 
     @Override

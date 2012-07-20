@@ -18,6 +18,7 @@ import com.sun.jna.platform.win32.WinNT;
 import com.sun.jna.platform.win32.WinNT.HANDLE;
 import com.sun.jna.ptr.IntByReference;
 import com.sun.jna.ptr.PointerByReference;
+import de.dimm.vsm.client.NetAgentApi;
 import de.dimm.vsm.client.win.WinRemoteFSElemFactory;
 import de.dimm.vsm.net.CdpTicket;
 import de.dimm.vsm.net.interfaces.CDPEventProcessor;
@@ -54,9 +55,9 @@ public class WinCdpHandler extends CdpHandler implements FCEEventSource
     WinNT.FILE_NOTIFY_INFORMATION info;
     WinBase.OVERLAPPED overlapped;
 
-    public WinCdpHandler( CDP_Param cdp, CDPEventProcessor eventProcessor)
+    public WinCdpHandler( NetAgentApi agentApi, CDP_Param cdp, CDPEventProcessor eventProcessor)
     {
-        super(cdp,  null, eventProcessor);
+        super(agentApi, cdp,  null, eventProcessor);
        
         this.eventSource = this;
     }

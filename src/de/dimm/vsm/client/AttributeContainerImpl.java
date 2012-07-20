@@ -15,14 +15,20 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.AclEntry;
 import java.nio.file.attribute.AclEntry.Builder;
+import java.nio.file.attribute.AclEntryFlag;
+import java.nio.file.attribute.AclEntryPermission;
+import java.nio.file.attribute.AclEntryType;
 import java.nio.file.attribute.AclFileAttributeView;
 import java.nio.file.attribute.GroupPrincipal;
 import java.nio.file.attribute.UserPrincipal;
 import java.nio.file.attribute.UserPrincipalLookupService;
 import java.nio.file.attribute.UserPrincipalNotFoundException;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  *
@@ -224,6 +230,10 @@ public class AttributeContainerImpl
     {
         // TODO: HANDLE CROSS PLATFORM RESTORE
 
+        if (Main.getWinacl() == Main.WINACL.WINACL_SKIP)
+        {
+            return true;
+        }
 
 
         AclFileAttributeView view = Files.getFileAttributeView(file, AclFileAttributeView.class);
@@ -254,60 +264,124 @@ public class AttributeContainerImpl
                 List<VSMAclEntry> acl =ac.getAcl();
                 List<AclEntry> realAcls = new ArrayList<AclEntry>(view.getAcl());
 
-
-                for (int i = 0; i < acl.size(); i++)
+                HashMap<String,AclEntry> aclMap = new HashMap<String, AclEntry>();
+                if (Main.getWinacl() == Main.WINACL.WINACL_HASH)
                 {
-                    VSMAclEntry aclEntry = acl.get(i);
-
-
-                    Builder bacl = AclEntry.newBuilder();
-                    bacl.setType(aclEntry.type());
-                    
-                    bacl.setPermissions(aclEntry.permissions());
-                    if (!aclEntry.flags().isEmpty())
+                    for (int i = 0; i < realAcls.size(); i++)
                     {
-                        bacl.setFlags(aclEntry.flags());
+                        AclEntry aclEntry = realAcls.get(i);
+                        name = aclEntry.principal().getName();
+                        aclMap.put(name, aclEntry);
                     }
-
-
-                    name = mapPrincipal( aclEntry.principalName(), systemIsGerman() );
-                    try
-                    {
-                        UserPrincipal aclOwner = null;
-                        
-                        // TODO: HASH OR EHCACHE
-                        if (aclEntry.isGroup())
-                        {
-                            aclOwner = usv.lookupPrincipalByGroupName(name);
-                        }
-                        else
-                        {
-                            aclOwner = usv.lookupPrincipalByName(name);
-                        }
-                        bacl.setPrincipal(aclOwner);
-                    }
-                    catch(UserPrincipalNotFoundException exc )
-                    {
-                        System.out.println("Skipping unknown user " + ac.getUserName() + " for " + file.toString());
-                        skipWrite = true;
-
-                        // WITHOUT OWNER WE CANNOT SET ACL
-                        continue;
-                    }
-                    catch (IOException iOException)
-                    {
-                        System.out.println("Error setting AclOwner " + ac.getUserName() + " for " + file.toString() + ": " + iOException.getMessage());
-                        skipWrite = true;
-
-                        // WITHOUT OWNER WE CANNOT SET ACL
-                        continue;
-                    }
-
-
-                    AclEntry entry = bacl.build();
-
-                    realAcls.add(entry);
+                    realAcls.clear();
                 }
+
+                if (Main.getWinacl() == Main.WINACL.WINACL_EVERYBODY)
+                {
+
+                    String name1 = mapPrincipal( "VORDEFINIERT\\Gäste", systemIsGerman() );
+                    String name2 = mapPrincipal( "NT-AUTORITÄT\\Authentifizierte Benutzer", systemIsGerman() );
+                    UserPrincipal owner1 = usv.lookupPrincipalByName(name1);
+                    UserPrincipal owner2 = usv.lookupPrincipalByName(name2);
+                    List<UserPrincipal> userList = new ArrayList<UserPrincipal>();
+                    userList.add(owner1);
+                    userList.add(owner2);
+
+
+                    for (int i = 0; i < userList.size(); i++)
+                    {
+                        UserPrincipal userPrincipal = userList.get(i);
+
+
+                        AclEntry entry = AclEntry.newBuilder().setType(AclEntryType.ALLOW).setPrincipal(userPrincipal)
+                                 .setPermissions(AclEntryPermission.DELETE, AclEntryPermission.READ_DATA,
+                                 AclEntryPermission.READ_ATTRIBUTES, AclEntryPermission.WRITE_DATA,
+                                 AclEntryPermission.WRITE_ATTRIBUTES, AclEntryPermission.EXECUTE, AclEntryPermission.APPEND_DATA,
+                                 AclEntryPermission.READ_NAMED_ATTRS, AclEntryPermission.DELETE_CHILD, AclEntryPermission.SYNCHRONIZE,
+                                 AclEntryPermission.READ_NAMED_ATTRS, AclEntryPermission.WRITE_NAMED_ATTRS,
+                                 AclEntryPermission.READ_ACL, AclEntryPermission.WRITE_ACL)
+                                 .build();
+
+                        if (file.toFile().isDirectory())
+                        {
+                            entry.permissions().add(AclEntryPermission.LIST_DIRECTORY);
+                            entry.flags().add(AclEntryFlag.FILE_INHERIT);
+                            entry.flags().add(AclEntryFlag.DIRECTORY_INHERIT);
+                        }
+
+                        realAcls.add(entry);
+                    }
+
+                }
+                else
+                {
+                    for (int i = 0; i < acl.size(); i++)
+                    {
+                        VSMAclEntry aclEntry = acl.get(i);
+
+
+                        Builder bacl = AclEntry.newBuilder();
+                        bacl.setType(aclEntry.type());
+
+                        bacl.setPermissions(aclEntry.permissions());
+                        if (!aclEntry.flags().isEmpty())
+                        {
+                            bacl.setFlags(aclEntry.flags());
+                        }
+
+
+                        name = mapPrincipal( aclEntry.principalName(), systemIsGerman() );
+                        try
+                        {
+                            UserPrincipal aclOwner = null;
+
+                            // TODO: HASH OR EHCACHE
+                            if (aclEntry.isGroup())
+                            {
+                                aclOwner = usv.lookupPrincipalByGroupName(name);
+                            }
+                            else
+                            {
+                                aclOwner = usv.lookupPrincipalByName(name);
+                            }
+                            bacl.setPrincipal(aclOwner);
+                        }
+                        catch(UserPrincipalNotFoundException exc )
+                        {
+                            System.out.println("Skipping unknown user " + ac.getUserName() + " for " + file.toString());
+                            skipWrite = true;
+
+                            // WITHOUT OWNER WE CANNOT SET ACL
+                            continue;
+                        }
+                        catch (IOException iOException)
+                        {
+                            System.out.println("Error setting AclOwner " + ac.getUserName() + " for " + file.toString() + ": " + iOException.getMessage());
+                            skipWrite = true;
+
+                            // WITHOUT OWNER WE CANNOT SET ACL
+                            continue;
+                        }
+
+
+                        AclEntry entry = bacl.build();
+
+                        realAcls.add(entry);
+                    }
+                }
+                
+                // IN HASH MODE WE GUARANTEE SETTING ONLY ONE (THE LAST) ACLENTRY PER PRINCIPALNAME
+                if (Main.getWinacl() == Main.WINACL.WINACL_HASH)
+                {
+                    for (int i = 0; i < realAcls.size(); i++)
+                    {
+                        AclEntry aclEntry = realAcls.get(i);
+                        name = aclEntry.principal().getName();
+                        aclMap.put(name, aclEntry);
+                    }
+                    realAcls = new ArrayList<AclEntry>( aclMap.values() );
+                }
+
 
                 if (!skipWrite)
                 {

@@ -34,7 +34,7 @@ public class Main
 {
 
     static String source_str = "trunk";
-    static String version = "0.8.7";
+    static String version = "0.8.8";
     static Main me;
     private static boolean agent_tcp = true;
     String work_dir;
@@ -190,6 +190,21 @@ public class Main
         return debug;
     }
 
+    public enum WINACL
+    {
+        WINACL_REGULAR,
+        WINACL_EVERYBODY,
+        WINACL_SKIP,
+        WINACL_HASH
+    };
+
+
+    private static WINACL winacl = WINACL.WINACL_REGULAR;
+
+    public static WINACL getWinacl()
+    {
+        return winacl;
+    }
    
 
 
@@ -228,6 +243,22 @@ public class Main
             {
                 WinAgentApi.fake_hash = true;
             }
+            if (string.equals("-wa"))
+            {
+                System.out.println("WinACL Everybody");
+                winacl = WINACL.WINACL_EVERYBODY;
+            }
+            if (string.equals("-ws"))
+            {
+                System.out.println("WinACL Skip");
+                winacl = WINACL.WINACL_SKIP;
+            }
+            if (string.equals("-wh"))
+            {
+                System.out.println("WinACL Hash");
+                winacl = WINACL.WINACL_HASH;
+            }
+
         }
 
        

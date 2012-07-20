@@ -99,7 +99,7 @@ public class CdpHandlerTest {
     {
         public CdpHandlerImpl(CDP_Param p,  FCEEventSource eventSource, CDPEventProcessor eventProcessor)
         {
-            super(p, eventSource, eventProcessor);
+            super(null, p, eventSource, eventProcessor);
         }
 
         @Override

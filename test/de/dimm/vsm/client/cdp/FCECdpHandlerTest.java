@@ -50,7 +50,7 @@ public class FCECdpHandlerTest {
     {
         System.out.println("init_cdp");
         CDP_Param p = new CDP_Param(null, 0, true, true, null, null, new UnixPlatformData());
-        FCECdpHandler instance = new FCECdpHandler(p, null, null);
+        FCECdpHandler instance = new FCECdpHandler(null, p, null, null);
 
 
         

@@ -430,7 +430,7 @@ public class UnixAgentApi extends NetAgentApi
 
         CDPEventProcessor evp = new VSMCDPEventProcessor(cdp_param);
 
-        cdp_handler = new FCECdpHandler( cdp_param, source, evp);
+        cdp_handler = new FCECdpHandler( this, cdp_param, source, evp);
              
         if (cdp_handler.init_cdp())
         {

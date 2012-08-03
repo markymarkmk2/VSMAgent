@@ -5,11 +5,9 @@
 
 package de.dimm.vsm.client.unix;
 
-import com.sun.jna.Native;
 import com.thoughtworks.xstream.XStream;
 import de.dimm.vsm.Utilities.ZipUtilities;
 import de.dimm.vsm.client.AttributeContainerImpl;
-import de.dimm.vsm.client.FSElemAccessor;
 import de.dimm.vsm.client.NetAgentApi;
 import de.dimm.vsm.client.RemoteFSElemFactory;
 import de.dimm.vsm.client.jna.PosixWrapper;
@@ -24,6 +22,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 import java.util.HashMap;
 import org.jruby.ext.posix.FileStat;
@@ -87,6 +86,127 @@ public class EtherShareRemoteFSElemFactory extends RemoteFSElemFactory
 
         return FileSystemElemNode.FT_OTHER;
     }
+    static String hex = "0123456789abcdef";
+    static String es_cpecial_chars = "/^\\\"<>|?*";
+    static byte get2Hex( char c1, char c2 ) throws IllegalArgumentException
+    {
+        int i1 = hex.indexOf(Character.toLowerCase(c1));
+        int i2 = hex.indexOf(Character.toLowerCase(c2));
+        if (i1 < 0 || i2 < 0)
+            throw new IllegalArgumentException("Wrong CAP-Code " + c1 + c2);
+        return (byte)((i1<<4) + i2);
+    }
+    @Override
+    public String convNative2SystemPath( String p )
+    {
+        int idx = p.indexOf('^');
+        if (idx == -1)
+            return p;
+        String[] parr = p.split("/");
+        StringBuilder sb = new StringBuilder(p.length());
+        for (int i = 0; i < parr.length; i++)
+        {
+            String string = parr[i];
+            String sys =  convNative2SystemName( string );
+            if (i > 0)
+                sb.append("/");
+
+            sb.append(sys);
+        }
+        return sb.toString();
+    }
+    @Override
+    public String convSystem2NativePath( String p )
+    {
+        if (p.equals("/"))
+            return p;
+        String[] parr = p.split("/");
+        StringBuilder sb = new StringBuilder(p.length());
+        for (int i = 0; i < parr.length; i++)
+        {
+            String string = parr[i];
+            String sys =  convSystem2NativeName( string );
+            if (i > 0)
+                sb.append("/");
+
+            sb.append(sys);
+        }
+        return sb.toString();
+    }
+
+    public String convNative2SystemName( String p )
+    {
+        int idx = p.indexOf('^');
+        if (idx == -1)
+            return p;
+
+        StringBuilder sb = new StringBuilder(p.length());
+
+        try
+        {
+            for (int i = 0; i < p.length(); i++)
+            {
+                char ch = p.charAt(i);
+                if (ch != '^')
+                {
+                    sb.append(ch);
+                    continue;
+                }
+                char c1 = p.charAt(i + 1);
+                char c2 = p.charAt(i + 2);
+                char b = (char)get2Hex(c1, c2);
+                if (b == '/')
+                    b = 0xf022;
+                sb.append(b);
+                i+= 2;
+            }
+        }
+        catch (Exception e)
+        {
+            System.out.println("Error in Es2SystemPath of " + p + ": " + e.getMessage());
+            return p;
+        }
+        return sb.toString();
+    }
+
+    public String convSystem2NativeName( String f )
+    {
+        StringBuilder sb = new StringBuilder(f.length());
+
+        try
+        {
+            for (int i = 0; i < f.length(); i++)
+            {
+                char ch = f.charAt(i);
+                if (ch == 0xf022)
+                {
+                    ch = '/';
+                }
+                
+                if (Character.isLetterOrDigit(ch) || ch >= 0x80)
+                {
+                    sb.append(ch);
+                    continue;
+                }
+                if (ch < 0x20 || es_cpecial_chars.indexOf(ch) >= 0)
+                {
+                    sb.append('^');
+                    sb.append(hex.charAt((ch >> 4) & 0xf));
+                    sb.append(hex.charAt(ch & 0xf));
+                    continue;
+                }
+                sb.append(ch);
+            }
+        }
+        catch (Exception e)
+        {
+            System.out.println("Error in System2EsPath of " + f + ": " + e.getMessage());
+            return f;
+        }
+        return sb.toString();
+    }
+
+
 
     @Override
     public synchronized  RemoteFSElem create_elem( File fh, boolean lazyAclInfo)
@@ -97,6 +217,7 @@ public class EtherShareRemoteFSElemFactory extends RemoteFSElemFactory
         long streamLen = evalStreamLen( fh );
 
 
+        String path = convNative2SystemPath(fh.getAbsolutePath());
         POSIX posix = PosixWrapper.getPosix();
 
         FileStat stat = null;
@@ -124,7 +245,7 @@ public class EtherShareRemoteFSElemFactory extends RemoteFSElemFactory
             if (pw != null)
                 uidName = pw.getLoginName();
             
-            elem = new RemoteFSElem( fh.getAbsolutePath(), typ,
+            elem = new RemoteFSElem( path, typ,
                     stat.mtime() * 1000, stat.ctime() * 1000, stat.atime() * 1000,
                     len, streamLen );
 
@@ -135,7 +256,7 @@ public class EtherShareRemoteFSElemFactory extends RemoteFSElemFactory
                 try
                 {
                     String rl = posix.readlink(fh.getAbsolutePath());
-                    elem.setLinkPath(rl);
+                    elem.setLinkPath(convNative2SystemPath(rl));
                 }
                 catch (IOException iOException)
                 {
@@ -145,7 +266,7 @@ public class EtherShareRemoteFSElemFactory extends RemoteFSElemFactory
         }
         else
         {
-            elem = new RemoteFSElem( fh.getAbsolutePath(), typ,
+            elem = new RemoteFSElem( path, typ,
                     fh.lastModified(), fh.lastModified(), fh.lastModified(),
                     len, streamLen );
         }
@@ -158,30 +279,20 @@ public class EtherShareRemoteFSElemFactory extends RemoteFSElemFactory
             if (lazyAclInfo)
             {
                 elem.setAclinfoData(RemoteFSElem.LAZY_ACLINFO);
+                elem.setAclinfo(RemoteFSElem.ACLINFO_ES);
             }
             else
             {
+
                 try
                 {
-                    AttributeContainer info = new AttributeContainer();
-
-                    if (AttributeContainerImpl.fill( elem, info ))
-                    {
-                        int hash = info.hashCode();
-                        String aclStream = getHashMap(hash);
-                        if (aclStream == null)
-                        {
-                            aclStream = AttributeContainer.serialize(info);
-                            putHashMap( hash, aclStream );
-                        }
-                        elem.setAclinfoData(aclStream);
-                        elem.setAclinfo(RemoteFSElem.ACLINFO_WIN);
-                    }
+                    elem.setAclinfoData(readAclInfo(elem));
                 }
-                catch (Exception exc)
+                catch (Exception iOException)
                 {
-                    exc.printStackTrace();
+                    System.out.println("DFehler beim Lesen der Attribute " + iOException.getMessage() );
                 }
+                elem.setAclinfo(RemoteFSElem.ACLINFO_ES);
             }
         }
        
@@ -203,10 +314,6 @@ public class EtherShareRemoteFSElemFactory extends RemoteFSElemFactory
     long get_flen( File fh )
     {
         return fh.length();
-    }
-    String get_path( File fh )
-    {
-        return fh.getAbsolutePath();
     }
 
     
@@ -254,12 +361,14 @@ public class EtherShareRemoteFSElemFactory extends RemoteFSElemFactory
 
     private void set_attributes( RemoteFSElem elem,  AttributeList attrs ) throws IOException
     {
-        String path = elem.getPath();
+        String path = convSystem2NativePath( elem.getPath() );
 
 
         String xaPath = getXAPath(path);
+        File data = new File(path);
         File rsrc = new File(xaPath);
-        
+
+
 
         RandomAccessFile raf = null;
         try
@@ -275,8 +384,8 @@ public class EtherShareRemoteFSElemFactory extends RemoteFSElemFactory
                 {
                     if (raf == null)
                         raf = new RandomAccessFile( rsrc, "rw" );
-
-                    ByteBuffer buff = wrapByteBuffer(entry.getData());
+                    ByteBuffer  buff = ByteBuffer.wrap(entry.getData());
+                    buff.order(ByteOrder.BIG_ENDIAN);
                     // RESET FILENO/DIRID
                     buff.position(20);
                     buff.putInt(0);
@@ -336,17 +445,37 @@ public class EtherShareRemoteFSElemFactory extends RemoteFSElemFactory
                 AttributeContainer info = AttributeContainer.unserialize(aclStream);
                 if (info != null)
                 {
-                    AttributeContainerImpl.set(elem, info);
+                    AttributeContainerImpl.set(path, info);
                 }
             }
         }
+
+        POSIX posix = PosixWrapper.getPosix();
+        if (elem.getPosixMode() != 0)
+        {
+            posix.chmod(data.getAbsolutePath(), elem.getPosixMode());
+            posix.chmod(rsrc.getAbsolutePath(), elem.getPosixMode());
+            posix.chown(data.getAbsolutePath(), elem.getUid(), elem.getGid());
+            posix.chown(rsrc.getAbsolutePath(), elem.getUid(), elem.getGid());
+        }
+
     }
 
+    private static boolean isDataEmpty( byte[] d )
+    {
+        for (int i = 0; i < d.length; i++)
+        {
+            byte b = d[i];
+            if (b != 0)
+                return false;
+        }
+        return true;
+    }
     private AttributeList get_attributes( RemoteFSElem elem ) 
     {
        AttributeList list = new AttributeList();
 
-        String path = elem.getPath();
+        String path = convSystem2NativePath( elem.getPath() );
         String xaPath = getXAPath(path);
         File rsrc = new File(xaPath);
 
@@ -354,7 +483,8 @@ public class EtherShareRemoteFSElemFactory extends RemoteFSElemFactory
         if (rsrc.exists())
         {
             int rsrcLen = (int)rsrc.length();
-            ByteBuffer buff = allocByteBuffer(rsrcLen);
+            ByteBuffer  buff = ByteBuffer.allocate(rsrcLen);
+            buff.order(ByteOrder.BIG_ENDIAN);
 
             FileInputStream fis = null;
             try
@@ -391,18 +521,24 @@ public class EtherShareRemoteFSElemFactory extends RemoteFSElemFactory
                     if (rsrcLen >= 32)
                     {
                         byte[] info = new byte[32];
-                        buff.position(32);
+                        buff.position(0);
                         buff.get(info);
-                        AttributeEntry entry = new AttributeEntry( ESFILEINFONAME, info);
-                        list.getList().add(entry);
+                        if (!isDataEmpty( info ) )
+                        {
+                            AttributeEntry entry = new AttributeEntry( ESFILEINFONAME, info);
+                            list.getList().add(entry);
+                        }
                     }
                     if (rsrcLen >= 64)
                     {
                         byte[] info = new byte[32];
                         buff.position(32);
                         buff.get(info);
-                        AttributeEntry entry = new AttributeEntry( FNDRINFONAME, info);
-                        list.getList().add(entry);
+                        if (!isDataEmpty( info ) )
+                        {
+                            AttributeEntry entry = new AttributeEntry( FNDRINFONAME, info);
+                            list.getList().add(entry);
+                        }
                     }
                     if (rsrcLen >= 116)
                     {
@@ -413,8 +549,11 @@ public class EtherShareRemoteFSElemFactory extends RemoteFSElemFactory
                         byte[] info = new byte[commentlen];
                         buff.position(116);
                         buff.get(info);
-                        AttributeEntry entry = new AttributeEntry( OSXCOMMENT, info);
-                        list.getList().add(entry);
+                        if (!isDataEmpty( info ) )
+                        {
+                            AttributeEntry entry = new AttributeEntry( OSXCOMMENT, info);
+                            list.getList().add(entry);
+                        }
                     }
                 }
                 else
@@ -425,60 +564,60 @@ public class EtherShareRemoteFSElemFactory extends RemoteFSElemFactory
         }
 
         // READ EXTENDED ATTRIBUTES
-        int len = VSMLibC.listxattr(path, null, 0);
-        if (len > 0)
-        {
-            ByteBuffer buff = ByteBuffer.allocate(4096);
-            len = VSMLibC.listxattr(path, buff, buff.capacity());
-            int errno = Native.getLastError();
-
-            if (len <= 0)
-                return null;
-
-            byte[] arr = new byte[len];
-            buff.get(arr, 0, len);
-            String[] names = FSElemAccessor.nulltermList2Array(arr);
-
-            for (int i = 0; i < names.length; i++)
-            {
-                String name = names[i];
-                byte[] data = null;
-
-                // SKIP ALL AUTOMATICALLY HANDLED ATTRIBUTES
-                boolean skipAttribute = false;
-
-                for (int j = 0; j < skipAttributes.length; j++)
-                {
-                    String attrName = skipAttributes[j];
-                    if (name.equals(attrName))
-                    {
-                        skipAttribute = true;
-                        break;
-                    }
-                }
-
-                if (!skipAttribute)
-                {
-                    System.out.println("Adding extended attribute " + name + " for " + path);
-
-                    len = VSMLibC.getxattr(path, name, null, 0);
-                    if (len > 0)
-                    {
-                        buff = ByteBuffer.allocate(len);
-                        len = VSMLibC.getxattr(path, name, buff, buff.capacity());
-                        data = new byte[len];
-                        buff.get(data, 0, len);
-
-                        AttributeEntry entry = new AttributeEntry(name, data);
-                        list.getList().add(entry);
-                    }
-                }
-            }
-        }
+//        int len = VSMLibC.listxattr(path, null, 0);
+//        if (len > 0)
+//        {
+//            ByteBuffer buff = ByteBuffer.allocate(4096);
+//            len = VSMLibC.listxattr(path, buff, buff.capacity());
+//            int errno = Native.getLastError();
+//
+//            if (len <= 0)
+//                return null;
+//
+//            byte[] arr = new byte[len];
+//            buff.get(arr, 0, len);
+//            String[] names = FSElemAccessor.nulltermList2Array(arr);
+//
+//            for (int i = 0; i < names.length; i++)
+//            {
+//                String name = names[i];
+//                byte[] data = null;
+//
+//                // SKIP ALL AUTOMATICALLY HANDLED ATTRIBUTES
+//                boolean skipAttribute = false;
+//
+//                for (int j = 0; j < skipAttributes.length; j++)
+//                {
+//                    String attrName = skipAttributes[j];
+//                    if (name.equals(attrName))
+//                    {
+//                        skipAttribute = true;
+//                        break;
+//                    }
+//                }
+//
+//                if (!skipAttribute)
+//                {
+//                    System.out.println("Adding extended attribute " + name + " for " + path);
+//
+//                    len = VSMLibC.getxattr(path, name, null, 0);
+//                    if (len > 0)
+//                    {
+//                        buff = ByteBuffer.allocate(len);
+//                        len = VSMLibC.getxattr(path, name, buff, buff.capacity());
+//                        data = new byte[len];
+//                        buff.get(data, 0, len);
+//
+//                        AttributeEntry entry = new AttributeEntry(name, data);
+//                        list.getList().add(entry);
+//                    }
+//                }
+//            }
+//        }
 
         // READ NFSv4 ACL (WIN/SOLARIS ZFS ONLY)
         AttributeContainer info = new AttributeContainer();
-        if (AttributeContainerImpl.fill( elem, info ))
+        if (AttributeContainerImpl.fill( path, info ))
         {
             int hash = info.hashCode();
             String aclStream = getHashMap(hash);
@@ -547,7 +686,8 @@ public class EtherShareRemoteFSElemFactory extends RemoteFSElemFactory
                 AttributeContainer ac = AttributeContainer.unserialize(elem.getAclinfoData());
                 if (ac != null)
                 {
-                    AttributeContainerImpl.set(elem, ac);
+                    String path = convSystem2NativePath( elem.getPath() );
+                    AttributeContainerImpl.set(path, ac);
                 }
             }
         }

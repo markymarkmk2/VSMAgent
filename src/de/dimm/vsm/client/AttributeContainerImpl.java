@@ -85,10 +85,11 @@ public class AttributeContainerImpl
         }
 
 
-    public static boolean fill(RemoteFSElem elem, AttributeContainer ac )
+    public static boolean fill(String npath, AttributeContainer ac )
     {
         FileSystem fs = FileSystems.getDefault();
-        Path file = fs.getPath(elem.getPath());
+
+        Path file = fs.getPath(npath);
 
         return fill( file, ac );
     }
@@ -176,10 +177,10 @@ public class AttributeContainerImpl
     }
 
 
-    public static boolean set(RemoteFSElem elem, AttributeContainer ac )
+    public static boolean set(String path, AttributeContainer ac )
     {
         FileSystem fs = FileSystems.getDefault();
-        Path file = fs.getPath(elem.getPath());
+        Path file = fs.getPath(path);
 
         return set( file, ac );
     }
@@ -323,7 +324,10 @@ public class AttributeContainerImpl
                         Builder bacl = AclEntry.newBuilder();
                         bacl.setType(aclEntry.type());
 
-                        bacl.setPermissions(aclEntry.permissions());
+                        if (!aclEntry.permissions().isEmpty())
+                        {
+                            bacl.setPermissions(aclEntry.permissions());
+                        }
                         if (!aclEntry.flags().isEmpty())
                         {
                             bacl.setFlags(aclEntry.flags());

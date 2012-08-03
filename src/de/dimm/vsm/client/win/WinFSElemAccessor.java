@@ -111,7 +111,10 @@ class WinFileHandleData extends FileHandleData
         {
             streamList.clear();
         }
-        return LibKernel32.CloseHandle(handle);
+        boolean ret = LibKernel32.CloseHandle(handle);
+        //System.out.println("Close: " + handle.toString() + " " + ret);
+        return ret;
+        
     }
 
     @Override
@@ -253,7 +256,7 @@ public class WinFSElemAccessor extends FSElemAccessor
             h = LibKernel32.CreateFile(path, LibKernel32.GENERIC_READ | LibKernel32.GENERIC_WRITE, LibKernel32.FILE_SHARE_READ, null, dwCreationDisposition, attrib, null);
 
         }
-
+        //System.out.println("Try  : " +  path + ": " + flags);
         if (LibKernel32.isInvalidHandleValue(h))
         {
             int err = LibKernel32.GetLastError();
@@ -263,12 +266,14 @@ public class WinFSElemAccessor extends FSElemAccessor
         {
             LibKernel32.SetEndOfFile( h );
         }
+        //System.out.println("Open : " + h.toString() + " P: " + elem.getPath());
         return h;
     }
-    public void close_raw_handle( HANDLE h )
+    public boolean close_raw_handle( HANDLE h )
     {
-
-        LibKernel32.CloseHandle(h);
+        boolean ret = LibKernel32.CloseHandle(h);
+        //System.out.println("Close: " + h.toString() + " " + ret);
+        return ret;        
     }
 
     @Override
@@ -325,6 +330,7 @@ public class WinFSElemAccessor extends FSElemAccessor
 
         hash_map.put(wrapper.getHandle(), data);
 
+        //System.out.println("OpenX: " + h.toString());
         return wrapper;
     }
 

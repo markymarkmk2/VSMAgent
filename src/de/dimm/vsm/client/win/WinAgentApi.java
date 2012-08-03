@@ -66,43 +66,41 @@ public class WinAgentApi extends NetAgentApi
     public static boolean fake_read = false;
     public static boolean fake_hash = false;
 
-    WinFSElemAccessor _fsAccess;
-    RemoteFSElemFactory _factory;
+    WinFSElemAccessor fsAccess;
+    RemoteFSElemFactory factory;
 
 
     @Override
     public FSElemAccessor getFSElemAccessor()
     {
-        return _fsAccess;
+        return fsAccess;
     }
 
     @Override
     public RemoteFSElemFactory getFsFactory()
     {
-        return _factory;
+        return factory;
     }
 
 
     public WinAgentApi( HashFunctionPool hash_pool )
     {
         this.hash_pool = hash_pool;
-        _fsAccess = new WinFSElemAccessor(this);
+        fsAccess = new WinFSElemAccessor(this);
         options = new Properties();
 
 
-        _factory = new WinRemoteFSElemFactory();
+        factory = new WinRemoteFSElemFactory();
         hfManager = new WinHFManager();
         
         snapshot = new WinSnapShotHandler();
-        snapshot.init();
-
-        
+        snapshot.init();        
     }
 
 
     WinFSElemAccessor getNativeAccesor()
     {
-        return _fsAccess;
+        return fsAccess;
     }
 
 
@@ -463,11 +461,11 @@ public class WinAgentApi extends NetAgentApi
     @Override
     public boolean set_filetimes_named( RemoteFSElem elem )
     {
-        HANDLE h = getNativeAccesor().open_raw_handle(elem, FL_RDWR);
+        HANDLE h = fsAccess.open_raw_handle(elem, FL_RDWR);
         if (h != null)
         {
-            getNativeAccesor().setFiletime(h, elem);
-            getNativeAccesor().close_raw_handle(h);
+            fsAccess.setFiletime(h, elem);
+            fsAccess.close_raw_handle(h);
             return true;
         }
         return false;

@@ -14,12 +14,14 @@ import com.sun.jna.ptr.PointerByReference;
 import de.dimm.vsm.client.AttributeContainerImpl;
 import de.dimm.vsm.client.jna.LibKernel32;
 import de.dimm.vsm.client.jna.LibKernel32.WIN32_STREAM_ID;
+import de.dimm.vsm.client.jna.PosixWrapper;
 import de.dimm.vsm.net.AttributeContainer;
 import de.dimm.vsm.net.RemoteFSElem;
 import de.dimm.vsm.records.FileSystemElemNode;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
+import org.jruby.ext.posix.POSIX;
 
 // H:\Archiv_H\444440497502D075\zm\referenzen\444440497501_593085\zm\referenzen\444440497500_582452\angeliefert\07.03.11\29831_DF_PHILADELPHIA_Snack_MP_Milka\29831 DF PHILADELPHIA Snack Milka MP Collection\ausgabe\norm\29831 DF PHILADELPHIA Snack Milka MP_norm.pdf
 /**
@@ -29,6 +31,7 @@ import java.util.HashMap;
 public class WinRemoteFSElemFactory extends RemoteFSElemFactory
 {
 
+    public static final String LONGPATH_PREFIX = "\\\\?\\";
     public static String getLongPath( RemoteFSElem elem )
     {
         String path = elem.getPath();
@@ -47,19 +50,23 @@ public class WinRemoteFSElemFactory extends RemoteFSElemFactory
 
         if (fpath.length() > 200)
         {
-            // DRIVE ?
-            if (fpath.charAt(1) == ':')
+            if (!fpath.startsWith(LONGPATH_PREFIX))
             {
-               fpath = "\\\\?\\" + fpath;
-            }
-            // UNC
-            else if (fpath.startsWith("//") || fpath.startsWith("\\\\"))
-            {
-               fpath = "\\\\?\\UNC\\" + fpath;
+                // DRIVE ?
+                if (fpath.charAt(1) == ':')
+                {
+                   fpath = "\\\\?\\" + fpath;
+                }
+                // UNC
+                else if (fpath.startsWith("//") || fpath.startsWith("\\\\"))
+                {
+                   fpath = "\\\\?\\UNC\\" + fpath;
+                }
             }
         }
         return fpath;
     }
+
 
     @Override
     public synchronized  RemoteFSElem create_elem( File fh, boolean lazyAclInfo )
@@ -97,7 +104,10 @@ public class WinRemoteFSElemFactory extends RemoteFSElemFactory
                 {
                     AttributeContainer info = new AttributeContainer();
 
-                    if (AttributeContainerImpl.fill( elem, info ))
+                    String fh_path = convNative2SystemPath(fh.getAbsolutePath());
+                    
+
+                    if (AttributeContainerImpl.fill( fh_path, info ))
                     {
                         int hash = info.hashCode();
                         String aclStream = getHashMap(hash);
@@ -127,7 +137,7 @@ public class WinRemoteFSElemFactory extends RemoteFSElemFactory
         {
             AttributeContainer info = new AttributeContainer();
 
-            if (AttributeContainerImpl.fill( elem, info ))
+            if (AttributeContainerImpl.fill( elem.getPath(), info ))
             {
                 int hash = info.hashCode();
                 String aclStream = getHashMap(hash);
@@ -176,7 +186,9 @@ public class WinRemoteFSElemFactory extends RemoteFSElemFactory
 
         long streamLen = evalStreamLen( fh );
 
-        RemoteFSElem elem = new RemoteFSElem( fh.getAbsolutePath(), typ,
+        String fh_path = getShortPath( fh.getAbsolutePath() );
+
+        RemoteFSElem elem = new RemoteFSElem( fh_path, typ,
                 data.ftLastWriteTime.GetAbsMS(), data.ftCreationTime.GetAbsMS(), data.ftLastAccessTime.GetAbsMS(),
                 len, streamLen );
 
@@ -190,6 +202,28 @@ public class WinRemoteFSElemFactory extends RemoteFSElemFactory
     static String get_path( File fh )
     {
         return getLongPath(fh);
+    }
+    static String getShortPath(String path)
+    {
+        if (path.startsWith(LONGPATH_PREFIX))
+            path = path.substring(LONGPATH_PREFIX.length());
+
+        return path;
+    }
+
+    @Override
+    public String convSystem2NativePath( String path )
+    {
+        return getLongPath(path);
+    }
+
+    @Override
+    public String convNative2SystemPath( String path )
+    {
+        if (path.startsWith(LONGPATH_PREFIX))
+            path = path.substring(LONGPATH_PREFIX.length());
+
+        return path;
     }
 
     static boolean read_win_data( WString path, LibKernel32.WIN32_FILE_ATTRIBUTE_DATA data )
@@ -393,10 +427,18 @@ public class WinRemoteFSElemFactory extends RemoteFSElemFactory
             {
                 AttributeContainer ac = AttributeContainer.unserialize(elem.getAclinfoData());
                 if (ac != null)
-                {
-                    AttributeContainerImpl.set(elem, ac);
+                {                    
+                    AttributeContainerImpl.set(elem.getPath(), ac);
                 }
             }
+            String path = elem.getPath();
+            POSIX posix = PosixWrapper.getPosix();
+            if ( elem.getPosixMode() != 0)
+            {
+                posix.chmod(path, elem.getPosixMode());
+                posix.chown(path, elem.getUid(), elem.getGid());
+            }
+
         }
         catch (Exception exception)
         {

@@ -11,6 +11,7 @@ import de.dimm.vsm.Utilities.ThreadPoolWatcher;
 
 import de.dimm.vsm.VSMFSLogger;
 import de.dimm.vsm.client.jna.LibKernel32;
+import de.dimm.vsm.client.jna.PosixWrapper;
 import de.dimm.vsm.client.jna.WinSnapshot;
 import de.dimm.vsm.client.win.WinAgentApi;
 import de.dimm.vsm.net.interfaces.AgentApi;
@@ -34,7 +35,7 @@ public class Main
 {
 
     static String source_str = "trunk";
-    static String version = "0.8.8";
+    static String version = "0.9.0";
     static Main me;
     private static boolean agent_tcp = true;
     String work_dir;
@@ -72,9 +73,13 @@ public class Main
 
         String jlibpath =  System.getProperty("java.library.path");
         if (is_win())
+        {
             jlibpath = System.getProperty("user.dir") + ";" + jlibpath;
+        }
         else
+        {
             jlibpath = System.getProperty("user.dir") + ":" + jlibpath;
+        }
 
         System.setProperty("java.library.path", jlibpath);
         if (is_osx())
@@ -114,6 +119,11 @@ public class Main
         f = f.getAbsoluteFile();
         System.out.println(f.getAbsolutePath());
 
+        if (is_win())
+        {
+            int err = LibKernel32.GetLastError();
+            err = PosixWrapper.getPosix().errno();
+        }
 
         try
         {

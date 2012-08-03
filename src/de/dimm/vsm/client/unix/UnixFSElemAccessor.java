@@ -62,17 +62,19 @@ public class UnixFSElemAccessor extends FSElemAccessor
 
     @Override
     public RemoteFSElemWrapper open_handle( RemoteFSElem elem, int flags )
-    {
+    {        
+        String npath = api.getFsFactory().convSystem2NativePath(elem.getPath());
+
         RandomAccessFile fh = null;
         try
         {
             if (flags == AgentApi.FL_RDONLY)
             {
-                fh = new RandomAccessFile(elem.getPath(), "r");
+                fh = new RandomAccessFile(npath, "r");
             }
             else if (test_flag(flags, AgentApi.FL_RDWR))
             {
-                fh = new RandomAccessFile(elem.getPath(), "rw");
+                fh = new RandomAccessFile(npath, "rw");
             }
         }
         catch (FileNotFoundException fileNotFoundException)
@@ -93,7 +95,8 @@ public class UnixFSElemAccessor extends FSElemAccessor
     public RemoteFSElemWrapper open_xa_handle( RemoteFSElem elem, int flags )
     {
         RandomAccessFile fh = null;
-        String path = getXAPath( elem.getPath() );
+        String npath = api.getFsFactory().convSystem2NativePath(elem.getPath());
+        String path = getXAPath( npath );
         try
         {
             if (flags == AgentApi.FL_RDONLY)
@@ -174,12 +177,17 @@ public class UnixFSElemAccessor extends FSElemAccessor
         mtimes[0] = dir.getMtimeMs() / 1000;
         mtimes[1] = (dir.getMtimeMs() % 1000) * 1000;
 
+        path = api.getFsFactory().convSystem2NativePath(path);
+
         PosixWrapper.getPosix().utimes(path, atimes, mtimes );
     }
 
     @Override
     public boolean createSymlink( String path, String linkPath )
     {
+        path = api.getFsFactory().convSystem2NativePath(path);
+        linkPath = api.getFsFactory().convSystem2NativePath(linkPath);
+
         POSIX posix = PosixWrapper.getPosix();
         try
         {

@@ -56,4 +56,7 @@ public abstract class RemoteFSElemFactory
          return buff;
      }
 
+     public abstract String convNative2SystemPath( String path );
+     public abstract String convSystem2NativePath( String path );
+
 }

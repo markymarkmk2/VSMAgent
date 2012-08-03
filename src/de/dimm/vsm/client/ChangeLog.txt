@@ -1,3 +1,10 @@
+Veränderungen in V0.9.0
+FIX: Setze nur gültige Posix stat bei Restore
+
+Veränderungen in V0.8.9
+UPD: ES-Agent Beta
+FIX: Setze Posix stat bei Restore
+
 Veränderungen in V0.8.7
 UPD: Compression und Encryption bei Kommunikation mit Agent
 

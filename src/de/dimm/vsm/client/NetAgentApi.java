@@ -109,7 +109,7 @@ public abstract class NetAgentApi implements AgentApi
     abstract public RemoteFSElemFactory getFsFactory();
 
 
-    protected abstract void detectRsrcMode( File parent, File[] list );
+    protected abstract void detectRsrcMode( File parent, File[] list );    
     protected abstract boolean isRsrcEntry( File f );
 
     public int getRsrcMode()
@@ -122,7 +122,7 @@ public abstract class NetAgentApi implements AgentApi
     public ArrayList<RemoteFSElem> list_dir( RemoteFSElem dir, boolean lazyAclInfo )
     {
 
-        File fh = new File(dir.getPath());
+        File fh = new File(getFsFactory().convSystem2NativePath(dir.getPath()));
         File[] files = fh.listFiles();
 
 
@@ -717,7 +717,7 @@ public abstract class NetAgentApi implements AgentApi
     @Override
     public void deleteDir( RemoteFSElem path, boolean b ) throws IOException
     {
-        String p = path.getPath();
+        String p = getFsFactory().convSystem2NativePath(path.getPath());
         File f = new File(p);
         if (f.exists() && f.isDirectory())
         {
@@ -845,7 +845,7 @@ public abstract class NetAgentApi implements AgentApi
     @Override
     public boolean create_dir( RemoteFSElem elem )
     {
-        File f = new File(elem.getPath());
+        File f = new File(getFsFactory().convSystem2NativePath(elem.getPath()));
         try
         {
             if (getFSElemAccessor().mkDir( f ))
@@ -857,9 +857,9 @@ public abstract class NetAgentApi implements AgentApi
                         getFsFactory().writeAclInfo(elem);
                     }
                 }
-                catch (IOException iOException)
+                catch (Exception e)
                 {
-
+                    System.out.println("Error writing ACL-Info " +  f.getAbsolutePath() + ": " + e.getMessage());
                 }
                 set_filetimes_named( elem );
                 return true;
@@ -867,6 +867,7 @@ public abstract class NetAgentApi implements AgentApi
         }
         catch (Exception e)
         {
+            System.out.println("Error creating directory " + f.getAbsolutePath() + ": " + e.getMessage());
         }
         return false;
     }

@@ -23,9 +23,9 @@ public abstract class FSElemAccessor
     // MORE THAN TWO DONT MAKWE SENSE
     public static final int MAX_FILE_READERS = 1;
 
-    List<MultiThreadedFileReader> mtfrBufferList;
-    private HashMap<Long, MultiThreadedFileReader> mtfrMap;
-    protected HashMap<Long,FileHandleData> hash_map;
+    final List<MultiThreadedFileReader> mtfrBufferList;
+    final private HashMap<Long, MultiThreadedFileReader> mtfrMap;
+    final protected HashMap<Long,FileHandleData> hash_map;
 
     protected NetAgentApi api;
     public FSElemAccessor( NetAgentApi api )
@@ -41,11 +41,16 @@ public abstract class FSElemAccessor
         hash_map = new HashMap<Long, FileHandleData>();
     }
 
+    boolean loggedEmpty = false;
     public MultiThreadedFileReader createMultiThreadedFileReader( NetAgentApi api, RemoteFSElemWrapper wrapper ) throws IOException
     {
         if (mtfrBufferList.isEmpty())
         {
-            System.out.println("MultiThreadedFileHandles are empty");
+            if (!loggedEmpty)
+            {
+                System.out.println("MultiThreadedFileHandles are empty, Map size is " + mtfrMap.size());
+                loggedEmpty = true;
+            }
             return null;
         }
 

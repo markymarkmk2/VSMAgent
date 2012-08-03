@@ -151,11 +151,11 @@ public class UnixAgentApi extends NetAgentApi
         if (Main.is_osx())
         {
             rsrcMode = RSRC_HFS;
+            return;
         }
-        else
-        {
-            rsrcMode = RSRC_NETATALK;
-        }
+
+        // TODO: SPEED UP WITH TEST IF RSRSC DIR UF CURRENT RSRCMODE EXISTS
+        
         for (int i = 0; i < list.length; i++)
         {
             File file = list[i];

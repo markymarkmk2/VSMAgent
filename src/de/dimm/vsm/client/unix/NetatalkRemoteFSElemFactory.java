@@ -28,6 +28,18 @@ import org.jruby.ext.posix.Passwd;
 public class NetatalkRemoteFSElemFactory extends RemoteFSElemFactory
 {
 
+    @Override
+    public String convSystem2NativePath( String path )
+    {
+        return path;
+    }
+
+    @Override
+    public String convNative2SystemPath( String path )
+    {
+        return path;
+    }
+
     String getTypFromStat(FileStat stat)
     {
         if (stat.isFile())
@@ -118,7 +130,7 @@ public class NetatalkRemoteFSElemFactory extends RemoteFSElemFactory
                 {
                     AttributeContainer info = new AttributeContainer();
 
-                    if (AttributeContainerImpl.fill( elem, info ))
+                    if (AttributeContainerImpl.fill( fh.getAbsolutePath(), info ))
                     {
                         int hash = info.hashCode();
                         String aclStream = getHashMap(hash);
@@ -258,7 +270,7 @@ public class NetatalkRemoteFSElemFactory extends RemoteFSElemFactory
         {
             AttributeContainer info = new AttributeContainer();
 
-            if (AttributeContainerImpl.fill( elem, info ))
+            if (AttributeContainerImpl.fill( elem.getPath(), info ))
             {
                 int hash = info.hashCode();
                 String aclStream = getHashMap(hash);
@@ -295,19 +307,29 @@ public class NetatalkRemoteFSElemFactory extends RemoteFSElemFactory
     {
         try
         {
+            String path = convSystem2NativePath( elem.getPath() );
             if (elem.getAclinfo() == RemoteFSElem.ACLINFO_WIN || elem.getAclinfo() == 0)
             {
                 AttributeContainer ac = AttributeContainer.unserialize(elem.getAclinfoData());
                 if (ac != null)
                 {
-                    AttributeContainerImpl.set(elem, ac);
+                    
+                    AttributeContainerImpl.set(path, ac);
                 }
+            }
+            if (elem.getPosixMode() != 0)
+            {
+                POSIX posix = PosixWrapper.getPosix();
+                posix.chmod(path, elem.getPosixMode());
+                posix.chown(path, elem.getUid(), elem.getGid());
             }
         }
         catch (Exception exception)
         {
             throw new IOException("Error while setting ACL and FinderInfo:" + exception.getMessage() );
         }
+
+
     }
 
     @Override

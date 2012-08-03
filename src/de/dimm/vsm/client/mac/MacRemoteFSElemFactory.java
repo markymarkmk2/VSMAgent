@@ -160,6 +160,17 @@ public class MacRemoteFSElemFactory extends RemoteFSElemFactory
 //     };
 // */
      
+    @Override
+    public String convSystem2NativePath( String path )
+    {
+        return path;
+    }
+
+    @Override
+    public String convNative2SystemPath( String path )
+    {
+        return path;
+    }
      
      
      
@@ -878,10 +889,9 @@ public class MacRemoteFSElemFactory extends RemoteFSElemFactory
 
     }
 
-    private void set_attributes( RemoteFSElem elem,  AttributeList attrs ) throws Exception
+    private void set_attributes( String path,  AttributeList attrs ) throws Exception
     {
-        String path = elem.getPath();
-        path = Normalizer.normalize(path, Normalizer.Form.NFD);
+        
 
         if (!setACLFinderAttributeEntry( path, attrs.getList() ))
         {
@@ -902,6 +912,7 @@ public class MacRemoteFSElemFactory extends RemoteFSElemFactory
                 }
             }
         }
+
     }
 
     public static final String[] skipAttributes=
@@ -918,7 +929,7 @@ public class MacRemoteFSElemFactory extends RemoteFSElemFactory
     {
        AttributeList list = new AttributeList();
 
-        String path = elem.getPath();
+        String path = convSystem2NativePath( elem.getPath() );
 
         int len = VSMLibC.listxattr(path, null, 0);
 
@@ -983,6 +994,9 @@ public class MacRemoteFSElemFactory extends RemoteFSElemFactory
     {
         try
         {
+            String path = convSystem2NativePath( elem.getPath() );
+            path = Normalizer.normalize(path, Normalizer.Form.NFD);
+
             if (elem.getAclinfo() == RemoteFSElem.ACLINFO_OSX)
             {
                 if (elem.getAclinfoData() != null)
@@ -991,8 +1005,8 @@ public class MacRemoteFSElemFactory extends RemoteFSElemFactory
                     String s = ZipUtilities.uncompress(elem.getAclinfoData());
                     Object o = xs.fromXML(s);
                     if (o instanceof AttributeList)
-                    {
-                        set_attributes(elem, (AttributeList) o);
+                    {                        
+                        set_attributes(path, (AttributeList) o);
                     }
                 }
             }
@@ -1001,9 +1015,13 @@ public class MacRemoteFSElemFactory extends RemoteFSElemFactory
                 AttributeContainer ac = AttributeContainer.unserialize(elem.getAclinfoData());
                 if (ac != null)
                 {
-                    AttributeContainerImpl.set(elem, ac);
+                    AttributeContainerImpl.set(elem.getPath(), ac);
                 }
             }
+
+            POSIX posix = PosixWrapper.getPosix();
+            posix.chmod(path, elem.getPosixMode());
+            posix.chown(path, elem.getUid(), elem.getGid());
         }
         catch (Exception exception)
         {

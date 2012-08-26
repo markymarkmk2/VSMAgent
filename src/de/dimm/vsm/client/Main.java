@@ -14,7 +14,10 @@ import de.dimm.vsm.client.jna.LibKernel32;
 import de.dimm.vsm.client.jna.PosixWrapper;
 import de.dimm.vsm.client.jna.WinSnapshot;
 import de.dimm.vsm.client.win.WinAgentApi;
+import de.dimm.vsm.net.CdpEvent;
+import de.dimm.vsm.net.RemoteFSElem;
 import de.dimm.vsm.net.interfaces.AgentApi;
+import de.dimm.vsm.net.interfaces.ServerApi;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -22,8 +25,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Field;
+import java.net.Inet4Address;
+import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ThreadPoolExecutor;
 import org.apache.log4j.Level;
 
@@ -35,7 +43,7 @@ public class Main
 {
 
     static String source_str = "trunk";
-    static String version = "0.9.0";
+    static String version = "0.9.1";
     static Main me;
     private static boolean agent_tcp = true;
     String work_dir;
@@ -51,8 +59,38 @@ public class Main
         System.out.println("Property " + key + ": " + System.getProperty(key));
     }
 
+    static boolean isJava7orBetter()
+    {
+        String javaVer = System.getProperty("java.version");
+        try
+        {
+
+            String[] a = javaVer.split("\\.");
+            int maj = Integer.parseInt(a[0]);
+            int min = Integer.parseInt(a[1]);
+            if (maj == 1 && min < 7)
+            {
+                return false;
+
+            }
+        }
+        catch (Exception exc)
+        {
+            System.out.println("Fehler beim Ermitten der Javaversion: " + javaVer + ": " + exc.getMessage());
+        }
+        return true;
+    }
+
     void init()
     {
+
+
+        if (!isJava7orBetter())
+        {
+            System.err.println("Java Version must be at least 1.7, aborting");
+            System.exit(1);
+        }
+
 
 //        try
 //        {
@@ -317,7 +355,24 @@ public class Main
             mn.idle();
             cnt++;
 
-
+//            try
+//            {
+//                InetAddress adr = Inet4Address.getByName("127.0.0.1");
+//                ServerApi api = Main.getServerConn().getServerApi(adr, 8080, false, false);
+//                List<CdpEvent> al = new ArrayList<CdpEvent>();
+//
+//                String path = "Z:\\unittest\\unittestdata\\a\\444440497501_593085\\zm123456789012345678901234567890\\referenzen123456789012345678901234567890\\444440497500_582452\\angeliefert\\07.03.11\\"
+//                        + "29831_DF_PHILADELPHIA_Snack_MP_Milka\\29831 DF PHILADELPHIA Snack Milka MP Collection\\._29831 DF PHILADELPHIA Snack Milka MP.ai";
+//                File f = new File(path);
+//                for (int i = 0; i < 1000; i++)
+//                {
+//                    al.add( CdpEvent.createSyncDirEvent(adr, path, new RemoteFSElem(f)) );
+//                }
+//                api.cdp_call(al, null);
+//            }
+//            catch (UnknownHostException unknownHostException)
+//            {
+//            }
             // EVERY MINUTE
             if ((cnt %60) == 0)
             {
@@ -332,6 +387,7 @@ public class Main
     
     void idle()
     {
+
         netServlet.idle();
     }
 
@@ -396,6 +452,7 @@ public class Main
                 netServlet = NetServlet.createUnixNetServlet(cdpIpFilter);
 
             ss = new ServerSocket(port);
+
             ss.setReuseAddress(true);
         }
         catch (Exception exception)

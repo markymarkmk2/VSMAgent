@@ -13,11 +13,13 @@ import de.dimm.vsm.net.AttributeList;
 import de.dimm.vsm.net.CdpTicket;
 import de.dimm.vsm.net.CompEncDataResult;
 import de.dimm.vsm.net.HashDataResult;
+import de.dimm.vsm.net.InvalidCdpTicketException;
 import de.dimm.vsm.net.RemoteFSElem;
 import de.dimm.vsm.net.RemoteFSElemWrapper;
 import de.dimm.vsm.net.StoragePoolWrapper;
 import de.dimm.vsm.net.interfaces.AgentApi;
 import de.dimm.vsm.net.interfaces.SnapshotHandle;
+import de.dimm.vsm.records.Excludes;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.util.ArrayList;
@@ -191,7 +193,7 @@ public class NetServlet extends HessianServlet implements AgentApi
     }
 
     @Override
-    public boolean stop_cdp( CdpTicket ticket )
+    public boolean stop_cdp( CdpTicket ticket ) throws InvalidCdpTicketException
     {
         return api.stop_cdp(ticket);
     }
@@ -296,6 +298,12 @@ public class NetServlet extends HessianServlet implements AgentApi
     public int writeEncryptedCompressed( RemoteFSElemWrapper file, byte[] data, long pos, int realLen, boolean enc, boolean comp )
     {
         return api.writeEncryptedCompressed(file, data, pos, realLen, enc, comp);
+    }
+
+    @Override
+    public void set_cdp_excludes( CdpTicket ticket, List<Excludes> exclList ) throws InvalidCdpTicketException
+    {
+        api.set_cdp_excludes(ticket, exclList);
     }
 
 

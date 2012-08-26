@@ -5,24 +5,26 @@
 
 package de.dimm.vsm.client.cdp;
 
-import de.dimm.vsm.Utilities.WinFileUtilities;
 import de.dimm.vsm.client.NetAgentApi;
 import de.dimm.vsm.client.RemoteFSElemFactory;
 import de.dimm.vsm.client.cdp.fce.FCEEventBuffer;
-import de.dimm.vsm.client.unix.NetatalkRemoteFSElemFactory;
+import de.dimm.vsm.client.jna.PosixWrapper;
 import de.dimm.vsm.client.win.WinRemoteFSElemFactory;
 import de.dimm.vsm.net.CdpEvent;
 import de.dimm.vsm.net.ExclListEntry;
 import de.dimm.vsm.net.RemoteFSElem;
 import de.dimm.vsm.net.interfaces.CDPEventProcessor;
+import de.dimm.vsm.records.Excludes;
 import de.dimm.vsm.records.FileSystemElemNode;
 import java.io.File;
 import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import org.jruby.ext.posix.FileStat;
 
 
 /*
@@ -80,6 +82,7 @@ import java.util.concurrent.TimeUnit;
 public abstract class CdpHandler  implements Runnable
 {
     CDP_Param cdp_param;
+    List<Excludes> exclList;
 
     
 
@@ -108,6 +111,8 @@ public abstract class CdpHandler  implements Runnable
     final ArrayBlockingQueue<FceEvent> fce_event_list;
     final LinkedList<FceEvent> fce_copy_list;
     final LinkedList<CdpEvent> cdp_work_list;
+
+    private long NEWELEM_THRESHOLD_S = 10; // AS LONG AS PARENT IS YOUNGER THAN THIS, IT IS DECLARED AS NEW
 
 
 
@@ -181,20 +186,20 @@ public abstract class CdpHandler  implements Runnable
 
 
 
-    public static boolean check_excluded(  ArrayList<ExclListEntry> excl_list, RemoteFSElem path, String name )
+    public boolean check_excluded(  RemoteFSElem path, String name )
     {
-        if (excl_list == null || excl_list.isEmpty())
+        if (exclList == null || exclList.isEmpty())
         {
             return false;
         }
         boolean ret = false;
 
         // IF DIR WE ALWAYS HANDLE FULL PATH,
-        for (int i = 0; i < excl_list.size(); i++)
+        for (int i = 0; i < exclList.size(); i++)
         {
-            ExclListEntry entry = excl_list.get(i);
-
-            if (entry.matches( path, name ))
+            Excludes entry = exclList.get(i);
+           
+            if (Excludes.checkExclude(entry, path))
             {
                 ret = true;
                 break;
@@ -345,6 +350,33 @@ public abstract class CdpHandler  implements Runnable
         }
         return elem;
     }
+    boolean isElemNew( String path )
+    {
+        FileStat lstat = PosixWrapper.getPosix().lstat(path);
+        if (lstat != null && (System.currentTimeMillis() / 1000) - lstat.ctime() < NEWELEM_THRESHOLD_S)
+            return true;
+
+        return false;
+    }
+    private void adjustFileDirMode( boolean isDir, FceEvent ev )
+    {
+        if (isDir)
+        {
+            if (ev.mode == FceEvent.FCE_FILE_CREATE)
+                ev.mode = FceEvent.FCE_DIR_CREATE;
+            if (ev.mode == FceEvent.FCE_FILE_MODIFY)
+                ev.mode = FceEvent.FCE_DIR_CREATE;
+            if (ev.mode == FceEvent.FCE_FILE_DELETE)
+                ev.mode = FceEvent.FCE_DIR_DELETE;
+        }
+        else
+        {
+            if (ev.mode == FceEvent.FCE_DIR_CREATE)
+                ev.mode = FceEvent.FCE_FILE_CREATE;
+            if (ev.mode == FceEvent.FCE_DIR_DELETE)
+                ev.mode = FceEvent.FCE_FILE_DELETE;
+        }
+    }
 
     public void coalesceEvent(  FceEvent ev,  LinkedList<CdpEvent> workList )
     {
@@ -365,13 +397,24 @@ public abstract class CdpHandler  implements Runnable
             return;
         }
         boolean isDir = ev.mode == FceEvent.FCE_DIR_CREATE  || ev.mode == FceEvent.FCE_DIR_DELETE;
+        boolean parentIsNew = false;
+        boolean elemIsNew = false;
 
         // DETECT IF WE HAVE A DELETED PARENT DIR
         boolean deleted = false;
         String path = ev.getPath();
-        if (!new File(path).exists())
+        File file = new File(path);
+
+        if (!file.exists())
         {
             deleted = true;
+        }
+        else
+        {
+            isDir = file.isDirectory();
+            elemIsNew = isElemNew(file.getAbsolutePath());
+            parentIsNew = isElemNew(file.getParent());
+            adjustFileDirMode( isDir, ev );
         }
 
         RemoteFSElem elem = fromPath( ev.getPath(), isDir);
@@ -379,6 +422,7 @@ public abstract class CdpHandler  implements Runnable
         // HACK, WE COULD BE A DIRECTORY, SO HANDLE ALL CHILDS
         if (netatalk_fce_has_no_del_dir() && ev.mode == FceEvent.FCE_FILE_MODIFY && deleted)
         {
+            // NOW RECURSE UPWARDS TO THE FIRST NON-DELETED PARENT AN KEEP TRACK IN ev
             ev.setMode(FceEvent.FCE_DIR_DELETE);
 
             while (path.length() > 1 && deleted)
@@ -389,24 +433,61 @@ public abstract class CdpHandler  implements Runnable
             }
         }
 
-
+        // CHECK IGNORE
         if (check_invalid_cdp_path(elem, ev.getName() ))
         {
             cdp_dbg("Coalescing "  + ev.toString() + " Reason: invalid cdp path");
             return;
         }
 
-        // RULE 1 & 2: LOOSE ALL CHILDREN
-        if (ev.mode == FceEvent.FCE_DIR_CREATE || ev.mode == FceEvent.FCE_DIR_DELETE )
+
+        for (int i = 0; i < workList.size(); i++)
+        {
+            CdpEvent cdpEvent = workList.get(i);
+
+            // SKIP ALL RECURSIVE CHILDREN, FCE IN NETATALK DOESNT PROVIDE DELETE DIR
+            // RULE 4:
+            if (cdpEvent.getMode() == CdpEvent.CDP_SYNC_DIR_RECURSIVE && cdpEvent.isParentof(ev.getPath()))
+            {
+                cdp_dbg("Coalescing "  + ev.toString() + " Reason: Direct parent has sync");
+                cdpEvent.touch();
+                return;
+            }
+            else if (cdpEvent.getMode() == CdpEvent.CDP_SYNC_DIR && cdpEvent.isDirectParentof(ev.getPath()))
+            {
+                cdp_dbg("Coalescing "  + ev.toString() + " Reason: Direct parent has sync");
+                cdpEvent.touch();
+                return;
+            }
+
+
+            // RULE 5: IGNORE IF CHILD OF EXISTIONG RECURSIVE EVENT
+            if (cdpEvent.getMode() == CdpEvent.CDP_DELETE_DIR_RECURSIVE || cdpEvent.getMode() == CdpEvent.CDP_SYNC_DIR_RECURSIVE)
+            {
+                if (cdpEvent.isParentof(ev.getPath()))
+                {
+                    cdp_dbg("Coalescing "  + ev.toString() + " Reason: Parent has sync");
+                    cdpEvent.touch();
+                    return;
+                }
+            }
+        }
+
+        // RULE 1: LOOSE ALL CHILDREN ON NEW DIR
+        if (ev.mode == FceEvent.FCE_DIR_CREATE )
         {
             for (int i = 0; i < workList.size(); i++)
             {
                 CdpEvent cdpEvent = workList.get(i);
                 if (cdpEvent.isChildof( ev.getPath() ))
                 {
-                    workList.remove(cdpEvent);
-                    cdp_dbg("Coalescing "  + cdpEvent.toString() + " Reason: is child of recursive sync/delete");
-                    i--;
+                    // LOOSE ON NEW DIR
+                    if (elemIsNew)
+                    {
+                        workList.remove(cdpEvent);
+                        cdp_dbg("Coalescing "  + cdpEvent.toString() + " Reason: is child of recursive sync");
+                        i--;
+                    }
                 }
                 else if (cdpEvent.getMode() == CdpEvent.CDP_DELETE_DIR_RECURSIVE || cdpEvent.getMode() == CdpEvent.CDP_SYNC_DIR_RECURSIVE)
                 {
@@ -420,67 +501,70 @@ public abstract class CdpHandler  implements Runnable
                 }
             }
 
-            // IN CASE OF DIR WE SYNC PARENT DIR ONLY, THIS IS SUFFICIENT
-            String ppath = ev.getParentPath();
-            elem = fromPath( ppath, true);
-            CdpEvent parentDirEvent = CdpEvent.createParentDirEvent(ev.client, ppath, elem);
+            // ADD RECURSIVE DIR
+            CdpEvent parentDirEvent = CdpEvent.createDirSyncRecursiveEvent(ev.client, ev.getPath(), elem);
             addSingularEvent( workList, parentDirEvent);
 
             return;
         }
+
+        // RULE 2: LOOSE ALL CHILDREN ON DELETE
+        if (ev.mode == FceEvent.FCE_DIR_DELETE)
+        {
+            for (int i = 0; i < workList.size(); i++)
+            {
+                CdpEvent cdpEvent = workList.get(i);
+                if (cdpEvent.isChildof( ev.getPath() ))
+                {
+                    // LOOSE ON DELETE DIR
+                    workList.remove(cdpEvent);
+                    cdp_dbg("Coalescing "  + cdpEvent.toString() + " Reason: is child of recursive delete");
+                    i--;
+                }
+                else if (cdpEvent.getMode() == CdpEvent.CDP_DELETE_DIR_RECURSIVE || cdpEvent.getMode() == CdpEvent.CDP_SYNC_DIR_RECURSIVE)
+                {
+                    // RULE 5
+                    if (cdpEvent.isParentof(ev.getPath()))
+                    {
+                        cdp_dbg("Coalescing "  + ev.toString() + " Reason: Child of recursive sync");
+                        cdpEvent.touch();
+                        return;
+                    }
+                }
+                else if (cdpEvent.getMode() == CdpEvent.CDP_SYNC_DIR)
+                {
+                    // RULE 5
+                    if (cdpEvent.isDirectParentof(ev.getPath()))
+                    {
+                        cdp_dbg("Coalescing "  + ev.toString() + " Reason: Direct Child of sync");
+                        cdpEvent.touch();
+                        return;
+                    }
+                }
+            }
+            // ADD RECURSIVE DIR
+            CdpEvent parentDirEvent = CdpEvent.createDirDeleteRecursiveEvent(ev.client, ev.getPath(), elem);
+            addSingularEvent( workList, parentDirEvent);
+
+            return;
+        }
+
         if (workList.isEmpty())
         {
-            //Rule 3:
+            //Rule 3: NEW SINGULAR EVENT
             String ppath = ev.getParentPath();
             elem = fromPath( ppath, true);
-            CdpEvent parentDirEvent = CdpEvent.createParentDirEvent(ev.client, ppath, elem);
+            CdpEvent parentDirEvent = CdpEvent.createSyncDirEvent(ev.client, ppath, elem);
             addSingularEvent( workList, parentDirEvent);
             return;
         }
 
 
-        for (int i = 0; i < workList.size(); i++)
-        {
-            CdpEvent cdpEvent = workList.get(i);
-
-            // SKIP ALL RECURSIVE CHILDREN, FCE IN NETATALK DOESNT PROVIDE DELETE DIR
-            if (netatalk_fce_has_no_del_dir())
-            {
-                // RULE 4:
-                if (cdpEvent.getMode() == CdpEvent.CDP_SYNC_DIR && cdpEvent.isParentof(ev.getPath()))
-                {
-                    cdp_dbg("Coalescing "  + ev.toString() + " Reason: Direct parent has sync");
-                    cdpEvent.touch();
-                    return;
-                }
-            }
-            else
-            {
-                // RULE 4:
-                if (cdpEvent.getMode() == CdpEvent.CDP_SYNC_DIR && cdpEvent.isDirectParentof(ev.getPath()))
-                {
-                    cdp_dbg("Coalescing "  + ev.toString() + " Reason: Direct parent has sync");
-                    cdpEvent.touch();
-                    return;
-                }
-            }
-
-            // RULE 5:
-            if (cdpEvent.getMode() == CdpEvent.CDP_DELETE_DIR_RECURSIVE || cdpEvent.getMode() == CdpEvent.CDP_SYNC_DIR_RECURSIVE)
-            {
-                if (cdpEvent.isParentof(ev.getPath()))
-                {
-                    cdp_dbg("Coalescing "  + ev.toString() + " Reason: Parent has sync");
-                    cdpEvent.touch();
-                    return;
-                }
-            }
-        }
 
         // rule 6:        
         String ppath = ev.getParentPath();
         elem = fromPath( ppath, true);
-        CdpEvent parentDirEvent = CdpEvent.createParentDirEvent(ev.client, ppath, elem);
+        CdpEvent parentDirEvent = CdpEvent.createSyncDirEvent(ev.client, ppath, elem);
         addSingularEvent( workList, parentDirEvent);
     }
     
@@ -500,13 +584,14 @@ public abstract class CdpHandler  implements Runnable
         workList.add(event);
     }
 
-    void workEvents(LinkedList<CdpEvent> workList )
+    void workEvents(List<CdpEvent> list )
     {
         long now = System.currentTimeMillis();
+        List<CdpEvent> workList = new ArrayList<CdpEvent>();
 
-        for (int i = 0; i < workList.size(); i++)
+        for (int i = 0; i < list.size(); i++)
         {
-            CdpEvent cdpEvent = workList.get(i);
+            CdpEvent cdpEvent = list.get(i);
 
             // EVENT WASNT TOUCHED SETTLE_TIME?
             if (now - cdpEvent.getLastTouched() > FCE_SETTLE_MS)
@@ -518,11 +603,21 @@ public abstract class CdpHandler  implements Runnable
                         continue;
                 }
 
-                workList.remove(cdpEvent);
+                list.remove(cdpEvent);
                 i--;
-                if (!eventProcessor.process( cdpEvent ))
+
+                workList.add(cdpEvent);
+            }
+        }
+        
+        if (!workList.isEmpty())
+        {
+            if (!eventProcessor.processList( workList ))
+            {
+                cdp_log("Lost cdp file_change, cannot send to Server");
+                for (int i = 0; i < workList.size(); i++)
                 {
-                    cdp_log("Lost cdp file_change, cannot send to Server");
+                    CdpEvent cdpEvent = workList.get(i);
                     eventBuffer.buffer_event( cdpEvent );
                 }
             }
@@ -567,5 +662,11 @@ public abstract class CdpHandler  implements Runnable
     private boolean netatalk_fce_has_no_del_dir()
     {
         return true;
+    }
+
+    public void setExcludes( List<Excludes> exclList )
+    {
+        this.exclList = new ArrayList<Excludes>();
+        this.exclList.addAll( exclList );
     }
 }

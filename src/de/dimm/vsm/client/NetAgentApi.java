@@ -18,12 +18,14 @@ import de.dimm.vsm.net.AttributeList;
 import de.dimm.vsm.net.CdpTicket;
 import de.dimm.vsm.net.CompEncDataResult;
 import de.dimm.vsm.net.HashDataResult;
+import de.dimm.vsm.net.InvalidCdpTicketException;
 import de.dimm.vsm.net.RemoteFSElem;
 import de.dimm.vsm.net.RemoteFSElemWrapper;
 import de.dimm.vsm.net.StoragePoolWrapper;
 import de.dimm.vsm.net.interfaces.AgentApi;
 import de.dimm.vsm.net.interfaces.SnapshotHandle;
 import de.dimm.vsm.net.interfaces.SnapshotHandler;
+import de.dimm.vsm.records.Excludes;
 import fr.cryptohash.Digest;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -198,6 +200,7 @@ public abstract class NetAgentApi implements AgentApi
         p.setProperty(OP_AG_VER, Main.get_version());
         p.setProperty(OP_AG_ENC, Boolean.TRUE.toString());
         p.setProperty(OP_AG_COMP, Boolean.TRUE.toString());
+        p.setProperty(OP_CDP_EXCLUDES, Boolean.TRUE.toString());
 
         return p;
     }
@@ -589,7 +592,7 @@ public abstract class NetAgentApi implements AgentApi
     }
 
     @Override
-    public boolean stop_cdp( CdpTicket ticket )
+    public boolean stop_cdp( CdpTicket ticket ) throws InvalidCdpTicketException
     {
         CdpHandler cdp_handler = removeCdpHandler(ticket);
         if (cdp_handler != null)
@@ -599,7 +602,7 @@ public abstract class NetAgentApi implements AgentApi
             cdp_handler = null;
             return true;
         }
-        return false;
+        throw new InvalidCdpTicketException(ticket);
     }
 
 
@@ -607,6 +610,17 @@ public abstract class NetAgentApi implements AgentApi
     public List<CdpTicket> getCdpTickets()
     {
         throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public void set_cdp_excludes(  CdpTicket ticket, List<Excludes> exclList ) throws InvalidCdpTicketException
+    {
+        CdpHandler cdpHandler = getCdpHandler( ticket );
+        if (cdpHandler == null)
+            throw new InvalidCdpTicketException(ticket );
+
+        cdpHandler.setExcludes( exclList );
+
     }
 
 

@@ -11,7 +11,6 @@ import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Properties;
 
 
 class ServerTicket
@@ -48,8 +47,6 @@ class ServerTicket
         int hash = adress.hashCode();
         return hash;
     }
-
-
 }
 /**
  *
@@ -79,7 +76,10 @@ public class ServerConnector
                 tk = serverList.remove(idx);
 
                 tk.api = generate_api(adress, port, ssl, path, keyStore, keyPwd, tcp);
-                
+
+                // DO REAL COMM, THROWS EXC ON ERROR
+                tk.api.get_properties();
+
                 serverList.add(tk);
                 return tk.api;
             }
@@ -87,6 +87,9 @@ public class ServerConnector
             {
                 tk.api = generate_api(adress, port, ssl, path, keyStore, keyPwd, tcp);
                 
+                // DO REAL COMM, THROWS EXC ON ERROR
+                tk.api.get_properties();
+
                 serverList.add(tk);
                 return tk.api;
             }
@@ -103,7 +106,20 @@ public class ServerConnector
         ServerTicket tk = new ServerTicket(adress, port);
         int idx = serverList.indexOf(tk);
         if (idx >= 0)
-            return serverList.get(idx).api;
+        {
+            ServerApi api = serverList.get(idx).api;
+            try
+            {
+                if (api.get_properties() != null)
+                {
+                    return api;
+                }
+            }
+            catch (Exception exc)
+            {
+                System.out.println("Connect to Server " + adress.toString() + " lost: " + exc.toString());
+            }
+        }
 
         return connect( adress, port, ssl, tcp );
     }
@@ -137,5 +153,4 @@ public class ServerConnector
         }
         return api;
     }
-
 }

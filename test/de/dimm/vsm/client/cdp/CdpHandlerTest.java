@@ -16,6 +16,7 @@ import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.LinkedList;
+import java.util.List;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -81,6 +82,12 @@ public class CdpHandlerTest {
 
         @Override
         public boolean process( CdpEvent ev )
+        {
+            throw new UnsupportedOperationException("Not supported yet.");
+        }
+
+        @Override
+        public boolean processList( List<CdpEvent> evList )
         {
             throw new UnsupportedOperationException("Not supported yet.");
         }
@@ -190,39 +197,44 @@ public class CdpHandlerTest {
 
 
             // RULE 3
-            ev =  new FceEvent(adr, version, FceEvent.FCE_FILE_MODIFY, event_id++, "\\opt\\data\\test".getBytes());
+            ev =  new FceEvent(adr, version, FceEvent.FCE_FILE_MODIFY, event_id++, "Z:\\unittest\\opt\\data\\test.txt".getBytes());
             instance.coalesceEvent(ev, workList);
             assertEquals(1, workList.size());
             assertEquals(CdpEvent.CDP_SYNC_DIR, workList.get(0).getMode());
-            // WE ASSUME ROOT DIR BECAUSE coalesceEvent WILL TRAVERSE UP TILL ROOT BECAUSE OPT AND DATA ARE NOT EXISTANT
-            assertEquals("\\", workList.get(0).getPath());
+            assertEquals("Z:\\unittest\\opt\\data", workList.get(0).getPath());
 
 
             // RULE 4
-            ev =  new FceEvent(adr, version, FceEvent.FCE_FILE_MODIFY, event_id++, "\\opt\\data\\tust".getBytes());
+            ev =  new FceEvent(adr, version, FceEvent.FCE_FILE_MODIFY, event_id++, "Z:\\unittest\\opt\\data\\tust".getBytes());
             instance.coalesceEvent(ev, workList);
             assertEquals(1, workList.size());
 
             // RULE 1
-            ev =  new FceEvent(adr, version, FceEvent.FCE_DIR_CREATE, event_id++, "\\opt\\data\\tast".getBytes());
+            ev =  new FceEvent(adr, version, FceEvent.FCE_DIR_CREATE, event_id++, "Z:\\unittest\\opt\\data\\tast".getBytes());
             instance.coalesceEvent(ev, workList);
-            assertEquals(2, workList.size());
-            assertEquals(CdpEvent.CDP_SYNC_DIR, workList.get(1).getMode());
+            assertEquals(1, workList.size());
+            
 
             // RULE 5
-            ev =  new FceEvent(adr, version, FceEvent.FCE_DIR_CREATE, event_id++, "\\opt\\data\\tast\\data33".getBytes());
+            ev =  new FceEvent(adr, version, FceEvent.FCE_DIR_CREATE, event_id++, "Z:\\unittest\\opt\\data\\tast\\data33".getBytes());
             instance.coalesceEvent(ev, workList);
-            ev =  new FceEvent(adr, version, FceEvent.FCE_FILE_CREATE, event_id++, "\\opt\\data\\tast\\data33\\f1".getBytes());
+            ev =  new FceEvent(adr, version, FceEvent.FCE_FILE_CREATE, event_id++, "Z:\\unittest\\opt\\data\\tast\\data33\\f1".getBytes());
             instance.coalesceEvent(ev, workList);
-            ev =  new FceEvent(adr, version, FceEvent.FCE_FILE_MODIFY, event_id++, "\\opt\\data\\tast\\data33\\f2".getBytes());
+            ev =  new FceEvent(adr, version, FceEvent.FCE_FILE_MODIFY, event_id++, "Z:\\unittest\\opt\\data\\tast\\data33\\f2".getBytes());
             instance.coalesceEvent(ev, workList);
-            assertEquals(1, workList.size());
+            ev =  new FceEvent(adr, version, FceEvent.FCE_FILE_CREATE, event_id++, "Z:\\unittest\\opt\\data\\tast\\data33\\data44".getBytes());
+            instance.coalesceEvent(ev, workList);
+            ev =  new FceEvent(adr, version, FceEvent.FCE_FILE_CREATE, event_id++, "Z:\\unittest\\opt\\data\\tast\\data33\\data44\\f3".getBytes());
+            instance.coalesceEvent(ev, workList);
+
+            assertEquals(2, workList.size());
 
             // RULE 2
-            ev =  new FceEvent(adr, version, FceEvent.FCE_DIR_DELETE, event_id++, "\\opt".getBytes());
+            ev =  new FceEvent(adr, version, FceEvent.FCE_DIR_DELETE, event_id++, "Z:\\unittest\\opt".getBytes());
             instance.coalesceEvent(ev, workList);            
             assertEquals(1, workList.size());
-            assertEquals(CdpEvent.CDP_SYNC_DIR, workList.get(0).getMode());
+            assertEquals(CdpEvent.CDP_DELETE_DIR_RECURSIVE, workList.get(0).getMode());
+            assertEquals("Z:\\unittest\\opt", workList.get(0).getPath());
         }
         catch (UnknownHostException unknownHostException)
         {
@@ -231,6 +243,13 @@ public class CdpHandlerTest {
         // TODO review the generated test code and remove the default call to fail.
         
     }
+
+   
+
+    
+
+
+
 
 
 

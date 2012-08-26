@@ -5,12 +5,13 @@
 
 package de.dimm.vsm.client;
 
+import com.ning.compress.lzf.LZFInputStream;
+import java.io.IOException;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import static org.junit.Assert.*;
 
 /**
  *
@@ -46,6 +47,13 @@ public class ReadRunnerTest {
     public void testRun()
     {
         System.out.println("run");
+        try
+        {
+            LZFInputStream lzf = new LZFInputStream(null);
+        }
+        catch (IOException iOException)
+        {
+        }
         
     }
 

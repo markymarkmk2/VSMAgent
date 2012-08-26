@@ -18,6 +18,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 
 /**
@@ -90,6 +91,7 @@ public class FCEEventBuffer
                 }
             }
 
+            List<CdpEvent> workList = new ArrayList<CdpEvent>();
 
             for (int i = 0; i < list.size(); i++)
             {
@@ -99,10 +101,17 @@ public class FCEEventBuffer
                 if (o instanceof CdpEvent)
                 {
                     CdpEvent elem = (CdpEvent)o;
-                    if (!eventProcessor.process(elem))
+                    workList.add(elem);
+
+                    // PUSH EVENTS IN BLOCKS OF 25 (JUST AN ARBITRARY ASSUMPTION, JUST TO KEEP CREATION OF CDP-JOBS LOW
+                    if (workList.size() >= 50)
                     {
-                        ret = false;
-                        break;
+                        if (!eventProcessor.processList(workList))
+                        {
+                            ret = false;
+                            break;
+                        }
+                        workList.clear();
                     }
                 }
             }

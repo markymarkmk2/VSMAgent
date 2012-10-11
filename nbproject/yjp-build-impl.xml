@@ -412,7 +412,7 @@ is divided into following sections:
                     <jvmarg line="${endorsed.classpath.cmd.line.arg}"/>
                     <jvmarg value="-ea"/>
                     <jvmarg line="${run.jvmargs}"/>
-                <jvmarg line="-agentpath:F:\PROGRA~3\YOURKI~1.8\bin\win32\yjpagent.dll=sampling,walltimespec=YJPQUOTED433a5c55736572735c41646d696e6973747261746f725c2e796a705c636f6e6669675c2e77616c6c74696d65,noj2ee,sessionname=VSMAgent,profileruipath=YJPQUOTED463a5c50726f6772616d2046696c65732028783836295c596f75724b6974204a6176612050726f66696c65722031312e302e385c62696e5c70726f66696c65722e657865,ideport=50849,onexit=snapshot,disablenatives"/>
+                <jvmarg line="-agentpath:F:\PROGRA~3\YOURKI~1.8\bin\win32\yjpagent.dll=sessionname=VSMAgent,profileruipath=YJPQUOTED463a5c50726f6772616d2046696c65732028783836295c596f75724b6974204a6176612050726f66696c65722031312e302e385c62696e5c70726f66696c65722e657865,ideport=57951,onexit=snapshot,disablenatives"/>
 </junit>
             <delete deleteonexit="true" file="yjp-build.xml" quiet="true" verbose="false"/>
 <delete deleteonexit="true" file="nbproject/yjp-build-impl.xml" quiet="true" verbose="false"/>
@@ -545,7 +545,7 @@ is divided into following sections:
             <element name="customize" optional="true"/>
             <sequential>
                 <java classname="@{classname}" dir="${work.dir}" fork="true" jvm="${platform.java}">
-                    <jvmarg line="-agentpath:F:\PROGRA~3\YOURKI~1.8\bin\win32\yjpagent.dll=sampling,walltimespec=YJPQUOTED433a5c55736572735c41646d696e6973747261746f725c2e796a705c636f6e6669675c2e77616c6c74696d65,noj2ee,sessionname=VSMAgent,profileruipath=YJPQUOTED463a5c50726f6772616d2046696c65732028783836295c596f75724b6974204a6176612050726f66696c65722031312e302e385c62696e5c70726f66696c65722e657865,ideport=50849,onexit=snapshot,disablenatives ${endorsed.classpath.cmd.line.arg}"/>
+                    <jvmarg line="-agentpath:F:\PROGRA~3\YOURKI~1.8\bin\win32\yjpagent.dll=sessionname=VSMAgent,profileruipath=YJPQUOTED463a5c50726f6772616d2046696c65732028783836295c596f75724b6974204a6176612050726f66696c65722031312e302e385c62696e5c70726f66696c65722e657865,ideport=57951,onexit=snapshot,disablenatives ${endorsed.classpath.cmd.line.arg}"/>
                     <jvmarg value="-Dfile.encoding=${runtime.encoding}"/>
                     <redirector errorencoding="${runtime.encoding}" inputencoding="${runtime.encoding}" outputencoding="${runtime.encoding}"/>
                     <jvmarg line="${run.jvmargs}"/>

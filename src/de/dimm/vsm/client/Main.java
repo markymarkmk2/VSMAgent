@@ -14,10 +14,7 @@ import de.dimm.vsm.client.jna.LibKernel32;
 import de.dimm.vsm.client.jna.PosixWrapper;
 import de.dimm.vsm.client.jna.WinSnapshot;
 import de.dimm.vsm.client.win.WinAgentApi;
-import de.dimm.vsm.net.CdpEvent;
-import de.dimm.vsm.net.RemoteFSElem;
 import de.dimm.vsm.net.interfaces.AgentApi;
-import de.dimm.vsm.net.interfaces.ServerApi;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -25,13 +22,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Field;
-import java.net.Inet4Address;
-import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.ThreadPoolExecutor;
 import org.apache.log4j.Level;
 
@@ -43,7 +35,7 @@ public class Main
 {
 
     static String source_str = "trunk";
-    static String version = "0.9.1";
+    static String version = "0.9.3";
     static Main me;
     private static boolean agent_tcp = true;
     String work_dir;

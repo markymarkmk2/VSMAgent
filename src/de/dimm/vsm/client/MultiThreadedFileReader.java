@@ -615,7 +615,7 @@ public abstract class MultiThreadedFileReader
             if (data == null)
             {
                 System.out.println("Null data in hash");
-                hashError = true;
+                
                 elem.hash = null;
                 return;
             }
@@ -627,7 +627,8 @@ public abstract class MultiThreadedFileReader
         }
         catch (IOException ex)
         {
-            hashError = true;
+            System.out.println("Exception in hash: " + ex.getMessage());
+            elem.hash = null;
         }
         
     }
@@ -654,8 +655,7 @@ public abstract class MultiThreadedFileReader
 
         
         while(!hashError && !readError)
-        {
-           
+        {           
             try
             {
 //                long a = System.currentTimeMillis();

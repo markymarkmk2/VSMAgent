@@ -24,6 +24,7 @@ import java.io.OutputStream;
 import java.lang.reflect.Field;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.util.concurrent.ThreadPoolExecutor;
 import org.apache.log4j.Level;
 
@@ -35,7 +36,7 @@ public class Main
 {
 
     static String source_str = "trunk";
-    static String version = "0.9.3";
+    static String version = "0.9.5";
     static Main me;
     private static boolean agent_tcp = true;
     String work_dir;
@@ -467,7 +468,12 @@ public class Main
                     Socket s = null;
                     try
                     {
+                        threadss.setSoTimeout(1000);
                         s = threadss.accept();
+                    }
+                    catch (SocketTimeoutException exception)
+                    {
+                        continue;
                     }
                     catch (Exception exception)
                     {

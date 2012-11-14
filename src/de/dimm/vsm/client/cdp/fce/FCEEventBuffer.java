@@ -115,6 +115,19 @@ public class FCEEventBuffer
                     }
                 }
             }
+            if (ret)  // STILL OKAY
+            {
+                // REST IN BUFFER
+                if (workList.size() > 0)
+                {
+                    if (!eventProcessor.processList(workList))
+                    {
+                        ret = false;
+                    }
+                    workList.clear();
+                }
+            }
+            // DONE W/O ERRORS, THEN DELETE BUFFER
             if (ret)
                 fh.delete();
 

@@ -82,7 +82,7 @@ public class VSMCDPEventProcessor implements CDPEventProcessor
             {
                 // AND SEND CALL
                 ServerApi api = Main.getServerConn().getServerApi(cdp_param.getServer(), cdp_param.getPort(), cdp_param.isSsl(), cdp_param.isTcp());
-                boolean ret = api.cdp_call(evList, cdp_param.getTicket());
+                boolean ret = api.cdp_call_list(evList, cdp_param.getTicket());
                 return ret;
             }
 

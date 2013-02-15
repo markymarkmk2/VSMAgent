@@ -27,6 +27,7 @@ import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.util.concurrent.ThreadPoolExecutor;
 import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
 
 /**
  *
@@ -299,7 +300,10 @@ public class Main
                 System.out.println("WinACL Hash");
                 winacl = WINACL.WINACL_HASH;
             }
-
+            if (string.equals("-l")) 
+            {
+                Logger.getLogger("VSMFS").setLevel(Level.TRACE);
+            }
         }
 
        

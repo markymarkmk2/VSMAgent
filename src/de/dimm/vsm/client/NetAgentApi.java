@@ -5,15 +5,13 @@
 
 package de.dimm.vsm.client;
 
-import com.ning.compress.lzf.LZFInputStream;
 import de.dimm.vsm.Utilities.CommThread;
 import de.dimm.vsm.Utilities.CryptTools;
 import de.dimm.vsm.Utilities.ZipUtilities;
 import de.dimm.vsm.client.cdp.CdpHandler;
 import de.dimm.vsm.fsutils.MountVSMFS;
-import de.dimm.vsm.fsutils.VSMFS;
+import de.dimm.vsm.fsutils.IVSMFS;
 import de.dimm.vsm.hash.HashFunctionPool;
-import de.dimm.vsm.net.AttributeContainer;
 import de.dimm.vsm.net.AttributeList;
 import de.dimm.vsm.net.CdpTicket;
 import de.dimm.vsm.net.CompEncDataResult;
@@ -27,8 +25,6 @@ import de.dimm.vsm.net.interfaces.SnapshotHandle;
 import de.dimm.vsm.net.interfaces.SnapshotHandler;
 import de.dimm.vsm.records.Excludes;
 import fr.cryptohash.Digest;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
@@ -93,7 +89,7 @@ public abstract class NetAgentApi implements AgentApi
     
     protected HFManager hfManager;
     
-    HashMap<Long, VSMFS> mountMap = new HashMap<Long, VSMFS>();
+    HashMap<Long, IVSMFS> mountMap = new HashMap<Long, IVSMFS>();
 
     //protected FileCacheManager cacheManager;
 
@@ -262,13 +258,13 @@ public abstract class NetAgentApi implements AgentApi
     @Override
     public String read_hash( RemoteFSElemWrapper wrapper, long pos, int bsize, String alg ) throws IOException
     {
-        byte[] data = null;
+        byte[] data;
 
         FileHandleData hdata = getFSElemAccessor().get_handleData(wrapper);
 
         if (pos == 0)
         {
-            long totalLen = 0;
+            long totalLen;
             if (wrapper.isXa())
                 totalLen = hdata.elem.getStreamSize();
             else
@@ -356,7 +352,7 @@ public abstract class NetAgentApi implements AgentApi
     @Override
     public byte[] read( RemoteFSElemWrapper wrapper, long pos, int bsize )
     {
-        byte[] data = null;
+        byte[] data;
 
         // READ VIA CACHE MANAGER
         FileHandleData hdata = getFSElemAccessor().get_handleData(wrapper);
@@ -462,13 +458,13 @@ public abstract class NetAgentApi implements AgentApi
     @Override
     public HashDataResult read_and_hash( RemoteFSElemWrapper wrapper, long pos, int bsize ) throws IOException
     {
-        byte[] data = null;
+        byte[] data;
 
         FileHandleData hdata = getFSElemAccessor().get_handleData(wrapper);
 
         if (pos == 0)
         {
-            long totalLen = 0;
+            long totalLen;
             if (wrapper.isXa())
                 totalLen = hdata.getElem().getStreamSize();
             else
@@ -627,12 +623,12 @@ public abstract class NetAgentApi implements AgentApi
 
 
 
-    @Override
-    public boolean mountVSMFS( InetAddress addr, int port, StoragePoolWrapper poolWrapper/*, Date timestamp, String subPath, User user*/, String drive )
+    
+    public boolean mountVSMFS( InetAddress addr, int port, StoragePoolWrapper poolWrapper, String drive )
     {
         addr = validateAdressFromCommThread(addr);
 
-        VSMFS fs = null;
+        IVSMFS fs;
         try
         {
             fs = mountMap.get(poolWrapper.getPoolIdx());
@@ -652,7 +648,7 @@ public abstract class NetAgentApi implements AgentApi
 
         try
         {
-            fs = MountVSMFS.mount_vsmfs(addr, port, poolWrapper/*, timestamp, subPath, user*/, drive, useFuse);
+            fs = MountVSMFS.mount_vsmfs(addr, port, poolWrapper, drive, useFuse, !poolWrapper.getQry().isReadOnly());
 
             mountMap.put(poolWrapper.getPoolIdx(), fs);
             return true;
@@ -669,7 +665,7 @@ public abstract class NetAgentApi implements AgentApi
     {
         addr = validateAdressFromCommThread(addr);
 
-        VSMFS fs = null;
+        IVSMFS fs;
         try
         {
             fs = mountMap.get(poolWrapper.getPoolIdx());

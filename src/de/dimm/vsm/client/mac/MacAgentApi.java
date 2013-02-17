@@ -112,7 +112,14 @@ public class MacAgentApi extends NetAgentApi
         _factory.getFsName(f.getPath());
 
     }
-    
+
+    @Override
+    public ArrayList<RemoteFSElem> list_roots( int mode )
+    {
+        return list_roots();
+    }
+
+
     
 
     @Override

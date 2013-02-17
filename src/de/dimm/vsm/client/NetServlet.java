@@ -306,6 +306,12 @@ public class NetServlet extends HessianServlet implements AgentApi
         api.set_cdp_excludes(ticket, exclList);
     }
 
+    @Override
+    public ArrayList<RemoteFSElem> list_roots( int mode )
+    {
+        return api.list_roots(mode);
+    }
+
 
 
 

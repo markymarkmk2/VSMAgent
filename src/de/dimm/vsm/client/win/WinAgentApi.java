@@ -20,18 +20,20 @@ import de.dimm.vsm.client.cdp.WinPlatformData;
 import de.dimm.vsm.client.cdp.fce.VSMCDPEventProcessor;
 import de.dimm.vsm.client.jna.LibKernel32;
 import de.dimm.vsm.hash.HashFunctionPool;
-import de.dimm.vsm.net.AttributeList;
 import de.dimm.vsm.net.CdpTicket;
 import de.dimm.vsm.net.interfaces.AgentApi;
 import de.dimm.vsm.net.RemoteFSElem;
 import de.dimm.vsm.net.RemoteFSElemWrapper;
 import de.dimm.vsm.net.interfaces.CDPEventProcessor;
+import de.dimm.vsm.records.FileSystemElemNode;
 import fr.cryptohash.Digest;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.SocketException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.Properties;
@@ -117,7 +119,61 @@ public class WinAgentApi extends NetAgentApi
 
 
 
+    @Override
+    public ArrayList<RemoteFSElem> list_roots(int mode)
+    {
+        ArrayList<RemoteFSElem> list = new ArrayList<RemoteFSElem>();
+        File[] files = File.listRoots();
 
+        if ((mode & LR_LISTMOUNTS) != 0)
+        {
+            
+            for (char drive = 'C';drive <= 'Z'; drive++)
+            {
+                boolean skipDrive = false;
+                for (int i = 0; i < files.length; i++)
+                {
+                    File file = files[i];
+                    String p = file.getAbsolutePath();
+                    if (p.length() >= 2 && p.charAt(1) == ':' && Character.toUpperCase(p.charAt(0)) == drive)
+                    {
+                        skipDrive = true;
+                        break;
+                    }
+                }
+                if (!skipDrive)
+                {
+                    long now = System.currentTimeMillis();
+                    RemoteFSElem elem = new RemoteFSElem(Character.toString(drive) + ":\\", FileSystemElemNode.FT_DIR, now, now, now, 0, 0);
+                    list.add(elem);
+                }
+            }
+            return list;
+        }
+
+
+        if (files == null)
+        {
+            System.out.println("No Roots available");
+            return list;
+        }
+
+        Arrays.sort(files, new FileComparator());
+
+        for (int i = 0; i < files.length; i++)
+        {
+            File file = files[i];
+            if (isRsrcEntry(file))
+            {
+                continue;
+            }
+
+            RemoteFSElem elem = getFsFactory().create_elem(file, true);
+
+            list.add(elem);
+        }
+        return list;
+    }
     
 
 

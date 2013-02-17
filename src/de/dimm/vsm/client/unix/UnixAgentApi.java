@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.net.InetAddress;
 import java.net.SocketException;
+import java.util.ArrayList;
 import java.util.Properties;
 
 
@@ -141,6 +142,12 @@ public class UnixAgentApi extends NetAgentApi
     private UnixFSElemAccessor getNativeAccesor()
     {
         return  _fsAccess;
+    }
+
+    @Override
+    public ArrayList<RemoteFSElem> list_roots(int mode)
+    {
+        return list_roots();
     }
 
 

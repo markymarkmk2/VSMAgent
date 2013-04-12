@@ -1,3 +1,10 @@
+Veränderungen in V0.9.6
+UPD: Support für Server-Feature Automounting
+
+Veränderungen in V0.9.5
+UPD: Schreibende Mounts in Vorbereitung
+FIX: Dateisystem Sicht UserPath
+
 Veränderungen in V0.9.0
 FIX: Setze nur gültige Posix stat bei Restore
 

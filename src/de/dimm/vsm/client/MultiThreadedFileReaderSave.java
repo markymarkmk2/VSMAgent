@@ -568,7 +568,7 @@ public abstract class MultiThreadedFileReaderSave
         if (readyQueue.isEmpty() && workList.isEmpty() && hashQueue.isEmpty() && lockQueue.size() == MAX_HASH_RUNNERS)
             return;
 
-        System.out.println("Resetting cache queues" );
+        //System.out.println("Resetting cache queues" );
         workList.clear();
         hashQueue.clear();
 

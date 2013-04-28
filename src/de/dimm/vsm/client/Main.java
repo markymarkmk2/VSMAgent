@@ -413,7 +413,16 @@ public class Main
         }
         catch (Exception exception)
         {
-            System.out.println("Connection closed"/* + exception.getMessage()*/);
+            if (exception instanceof IOException && exception.getMessage().equals("Unexpected end of file for Hessian message"))
+            {
+                // do nothing, conn closed
+                // System.out.println("Connection closed"/* + exception.getMessage()*/);exception.printStackTrace();
+            }
+            else
+            {
+                Logger log = VSMFSLogger.getLog();
+                log.error("Connection closed", exception);
+            }
         }
         finally
         {
@@ -500,7 +509,8 @@ public class Main
                     // SOCKET IS CLOSED INSIDE run_comm
                     final Socket final_socket = s;
 
-                    System.out.println("New connection, active threads: " + poolexecutor.getActiveCount() );
+                    if (poolexecutor.getActiveCount() > 3)
+                        System.out.println("New connection, active threads: " + poolexecutor.getActiveCount() );
 
 
                     Runnable r = new Runnable()

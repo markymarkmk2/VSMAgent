@@ -200,6 +200,7 @@ public abstract class NetAgentApi implements AgentApi
 
         return p;
     }
+    boolean adressWarned = false;
 
     protected InetAddress validateAdressFromCommThread( InetAddress addr)
     {
@@ -215,7 +216,11 @@ public abstract class NetAgentApi implements AgentApi
                 InetSocketAddress iadr = (InetSocketAddress)sadr;
                 if (!iadr.getAddress().equals(addr))
                 {
-                    System.out.println("Remote address does not match, using Socket address");
+                    if (!adressWarned)
+                    {
+                        System.out.println("Remote address does not match, using Socket address");
+                        adressWarned= true;
+                    }
                     addr = iadr.getAddress();
                 }
             }

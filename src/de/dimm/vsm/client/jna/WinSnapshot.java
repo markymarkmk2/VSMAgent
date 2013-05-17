@@ -5,7 +5,6 @@
 
 package de.dimm.vsm.client.jna;
 
-import com.sun.jna.Platform;
 import de.dimm.vsm.Utilities.CmdExecutor;
 
 

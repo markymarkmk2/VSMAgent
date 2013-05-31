@@ -37,7 +37,7 @@ public class Main
 {
 
     static String source_str = "trunk";
-    static String version = "0.9.8";
+    static String version = "0.9.9";
     static Main me;
     private static boolean agent_tcp = true;
     String work_dir;

@@ -565,8 +565,7 @@ public abstract class MultiThreadedFileReader
         }
 
         if (lockQueue.isEmpty())
-        {
-            lockQueue = new LinkedBlockingQueue<HashReadyLock>(Main.CACHE_FILE_FLOCKS);
+        {            
             for (int i = 0; i < lockQueueSize; i++)
             {
                 lockQueue.add( new HashReadyLock(i));

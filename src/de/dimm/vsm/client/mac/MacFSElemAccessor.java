@@ -84,7 +84,7 @@ public class MacFSElemAccessor extends FSElemAccessor
 
         MacFileHandleData data = new MacFileHandleData(elem,fh);
 
-        RemoteFSElemWrapper wrapper = new RemoteFSElemWrapper(newHandleValue++, /*xa*/false);
+        RemoteFSElemWrapper wrapper = new RemoteFSElemWrapper(newHandleValue++, /*xa*/false, elem.isVirtualFS());
 
         hash_map.put(wrapper.getHandle(), data);
 
@@ -126,7 +126,7 @@ public class MacFSElemAccessor extends FSElemAccessor
 
         MacFileHandleData data = new MacFileHandleData(elem,fh);
 
-        RemoteFSElemWrapper wrapper = new RemoteFSElemWrapper(newHandleValue++, /*xa*/true);
+        RemoteFSElemWrapper wrapper = new RemoteFSElemWrapper(newHandleValue++, /*xa*/true, elem.isVirtualFS());
 
         hash_map.put(wrapper.getHandle(), data);
 

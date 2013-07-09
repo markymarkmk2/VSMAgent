@@ -2,13 +2,13 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-
 package de.dimm.vsm.client;
 
 import de.dimm.vsm.Utilities.CommThread;
 import de.dimm.vsm.Utilities.CryptTools;
 import de.dimm.vsm.Utilities.ZipUtilities;
 import de.dimm.vsm.client.cdp.CdpHandler;
+import de.dimm.vsm.client.vfs.VfsEventProcessor;
 import de.dimm.vsm.fsutils.MountVSMFS;
 import de.dimm.vsm.fsutils.IVSMFS;
 import de.dimm.vsm.hash.HashFunctionPool;
@@ -24,6 +24,7 @@ import de.dimm.vsm.net.interfaces.AgentApi;
 import de.dimm.vsm.net.interfaces.SnapshotHandle;
 import de.dimm.vsm.net.interfaces.SnapshotHandler;
 import de.dimm.vsm.records.Excludes;
+import de.dimm.vsm.vfs.IVfsEventProcessor;
 import fr.cryptohash.Digest;
 import java.io.File;
 import java.io.IOException;
@@ -38,25 +39,28 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Properties;
 
-
 class FileComparator implements Comparator<File>
 {
 
-  @Override
-  public int compare(File b1, File b2)
-  {
-      if (b1.isDirectory())
-      {
-          if (!b2.isDirectory())
-              return 1;
-      }
-      else
-      {
-          if (b2.isDirectory())
-              return -1;
-      }
-      return b1.getName().compareToIgnoreCase(b2.getName());
-  }
+    @Override
+    public int compare( File b1, File b2 )
+    {
+        if (b1.isDirectory())
+        {
+            if (!b2.isDirectory())
+            {
+                return 1;
+            }
+        }
+        else
+        {
+            if (b2.isDirectory())
+            {
+                return -1;
+            }
+        }
+        return b1.getName().compareToIgnoreCase(b2.getName());
+    }
 }
 
 /**
@@ -65,56 +69,45 @@ class FileComparator implements Comparator<File>
  */
 public abstract class NetAgentApi implements AgentApi
 {
+
     public static final int RSRC_NETATALK = 1;
     public static final int RSRC_ES = 2;
     public static final int RSRC_XINET = 3;
     public static final int RSRC_USCORE = 4;
     public static final int RSRC_HFS = 5;
-    
     public static final String NETATALK_RSRCDIR = ".AppleDouble";
     public static final String ES_RSRCDIR = ".rsrc";
     public static final String XINET_RSRCDIR = ".HSResource";
-
     //UnixFSElemAccessor fsAcess;
-
     protected int rsrcMode;
-
-
     protected HashFunctionPool hash_pool;
     protected Properties options;
     protected SnapshotHandler snapshot;
     //protected CdpHandler cdp_handler;
-
-    private HashMap<CdpTicket,CdpHandler> cdpHandlerMap = new HashMap<CdpTicket, CdpHandler>();
-    
+    private HashMap<CdpTicket, CdpHandler> cdpHandlerMap = new HashMap<CdpTicket, CdpHandler>();
     protected HFManager hfManager;
-    
     HashMap<Long, IVSMFS> mountMap = new HashMap<Long, IVSMFS>();
-
     //protected FileCacheManager cacheManager;
-
     int lastRdqlen = -1;
     int lastRdyqlen = -1;
     int lastHTherads = -1;
+
     void idle()
     {
     }
 
-
-
-
     abstract public FSElemAccessor getFSElemAccessor();
+
     abstract public RemoteFSElemFactory getFsFactory();
 
+    protected abstract void detectRsrcMode( File parent, File[] list );
 
-    protected abstract void detectRsrcMode( File parent, File[] list );    
     protected abstract boolean isRsrcEntry( File f );
 
     public int getRsrcMode()
     {
         return rsrcMode;
     }
-    
 
     @Override
     public ArrayList<RemoteFSElem> list_dir( RemoteFSElem dir, boolean lazyAclInfo )
@@ -138,7 +131,7 @@ public abstract class NetAgentApi implements AgentApi
         for (int i = 0; i < files.length; i++)
         {
             File file = files[i];
-           
+
             if (isRsrcEntry(file))
             {
                 continue;
@@ -151,7 +144,7 @@ public abstract class NetAgentApi implements AgentApi
         }
         return list;
     }
-    
+
     @Override
     public ArrayList<RemoteFSElem> list_roots()
     {
@@ -186,6 +179,7 @@ public abstract class NetAgentApi implements AgentApi
     {
         options = p;
     }
+
     @Override
     public Properties get_properties()
     {
@@ -202,24 +196,24 @@ public abstract class NetAgentApi implements AgentApi
     }
     boolean adressWarned = false;
 
-    protected InetAddress validateAdressFromCommThread( InetAddress addr)
+    protected InetAddress validateAdressFromCommThread( InetAddress addr )
     {
 
         Thread thr = Thread.currentThread();
         if (thr instanceof CommThread)
         {
-            CommThread cthr = (CommThread)thr;
+            CommThread cthr = (CommThread) thr;
             Socket s = cthr.getSocket();
             SocketAddress sadr = s.getRemoteSocketAddress();
             if (sadr instanceof InetSocketAddress)
             {
-                InetSocketAddress iadr = (InetSocketAddress)sadr;
+                InetSocketAddress iadr = (InetSocketAddress) sadr;
                 if (!iadr.getAddress().equals(addr))
                 {
                     if (!adressWarned)
                     {
-                        System.out.println("Remote address does not match, using Socket address");
-                        adressWarned= true;
+                        System.out.println("Remote address " + addr.getHostAddress() + " does not match, using Socket address " + iadr.getHostName());
+                        adressWarned = true;
                     }
                     addr = iadr.getAddress();
                 }
@@ -250,16 +244,13 @@ public abstract class NetAgentApi implements AgentApi
         return hfManager.checkHotfolder(mountPath, getSetttleTime_s, filter, onlyFiles, onlyDirs, itemIdx);
     }
 
-
-
     @Override
     public boolean close_data( RemoteFSElemWrapper wrapper ) throws IOException
     {
         return getFSElemAccessor().close_handle(wrapper);
     }
-
-
     static int errShowCnt = 0;
+
     @Override
     public String read_hash( RemoteFSElemWrapper wrapper, long pos, int bsize, String alg ) throws IOException
     {
@@ -271,10 +262,14 @@ public abstract class NetAgentApi implements AgentApi
         {
             long totalLen;
             if (wrapper.isXa())
+            {
                 totalLen = hdata.elem.getStreamSize();
+            }
             else
+            {
                 totalLen = hdata.elem.getDataSize();
-            if (totalLen > 2* bsize)
+            }
+            if (totalLen > 2 * bsize)
             {
                 MultiThreadedFileReader mtfr = getFSElemAccessor().createMultiThreadedFileReader(this, wrapper);
                 if (mtfr != null)
@@ -315,7 +310,9 @@ public abstract class NetAgentApi implements AgentApi
         data = rawRead(wrapper, pos, bsize);
 
         if (data == null)
-                System.out.println("read of pos:" + pos + " bsize:" + bsize + " gave null");
+        {
+            System.out.println("read of pos:" + pos + " bsize:" + bsize + " gave null");
+        }
 
         String ret = null;
         Digest digest = null;
@@ -326,12 +323,16 @@ public abstract class NetAgentApi implements AgentApi
 
             byte[] hash = digest.digest(data);
             if (hash == null)
+            {
                 throw new IOException("Digest of date returned null");
+            }
 
             ret = CryptTools.encodeUrlsafe(hash);
 
             if (ret == null)
+            {
                 throw new IOException("Cannot encodeUrlsafe Crypttools: " + hash);
+            }
         }
         catch (Exception iOException)
         {
@@ -370,11 +371,11 @@ public abstract class NetAgentApi implements AgentApi
                 if (wrapper.isXa())
                 {
 
-                    data = mtfr.getXAData( pos, bsize);
+                    data = mtfr.getXAData(pos, bsize);
                 }
                 else
                 {
-                    data = mtfr.getData( pos, bsize);
+                    data = mtfr.getData(pos, bsize);
                 }
                 if (data != null)
                 {
@@ -390,12 +391,15 @@ public abstract class NetAgentApi implements AgentApi
 
         return data;
     }
+
     @Override
     public CompEncDataResult readEncryptedCompressed( RemoteFSElemWrapper wrapper, long pos, int bsize, boolean enc, boolean comp )
     {
         byte[] data = read(wrapper, pos, bsize);
         if (data == null)
+        {
             return null;
+        }
 
 
         // FIRST COMPRESS, THEN ENCRYPT
@@ -403,15 +407,19 @@ public abstract class NetAgentApi implements AgentApi
         {
             data = ZipUtilities.lzf_compressblock(data);
             if (data == null)
+            {
                 return null;
+            }
         }
         int compLen = data.length;
 
         if (enc)
+        {
             data = CryptTools.encryptXTEA8(data);
+        }
 
         int encLen = data.length;
-        
+
         CompEncDataResult res = new CompEncDataResult(data, compLen, encLen);
 
 
@@ -425,15 +433,16 @@ public abstract class NetAgentApi implements AgentApi
     }
 
     public abstract byte[] rawRead( byte[] data, RemoteFSElemWrapper wrapper, long pos, int bsize );
-    
-    
-   @Override
+
+    @Override
     public CompEncDataResult read_and_hash_encrypted_compressed( RemoteFSElemWrapper wrapper, long pos, int bsize, boolean enc, boolean comp ) throws IOException
     {
         HashDataResult hdr = read_and_hash(wrapper, pos, bsize);
 
         if (hdr == null)
+        {
             return null;
+        }
 
         byte[] data = hdr.getData();
 
@@ -442,7 +451,9 @@ public abstract class NetAgentApi implements AgentApi
         {
             byte[] compData = ZipUtilities.lzf_compressblock(hdr.getData());
             if (compData == null)
+            {
                 return null;
+            }
 
             data = compData;
         }
@@ -455,10 +466,9 @@ public abstract class NetAgentApi implements AgentApi
         int encLen = data.length;
 
         CompEncDataResult res = new CompEncDataResult(data, compLen, encLen, hdr.getHashValue());
-        
+
         return res;
     }
-
 
     @Override
     public HashDataResult read_and_hash( RemoteFSElemWrapper wrapper, long pos, int bsize ) throws IOException
@@ -471,10 +481,14 @@ public abstract class NetAgentApi implements AgentApi
         {
             long totalLen;
             if (wrapper.isXa())
+            {
                 totalLen = hdata.getElem().getStreamSize();
+            }
             else
+            {
                 totalLen = hdata.getElem().getDataSize();
-            if (totalLen > 2* bsize)
+            }
+            if (totalLen > 2 * bsize)
             {
                 MultiThreadedFileReader mtfr = getFSElemAccessor().createMultiThreadedFileReader(this, wrapper);
                 if (mtfr != null)
@@ -490,17 +504,17 @@ public abstract class NetAgentApi implements AgentApi
             MultiThreadedFileReader cacheManager = getFSElemAccessor().getMultiThreadedFileReader(wrapper);
             if (wrapper.isXa())
             {
-                data = cacheManager.getXAData( pos, bsize);
+                data = cacheManager.getXAData(pos, bsize);
             }
             else
             {
-                data = cacheManager.getData( pos, bsize);
+                data = cacheManager.getData(pos, bsize);
             }
             if (data != null)
             {
                 String hashValue = cacheManager.getHash(pos, bsize);
 
-                HashDataResult ret = new HashDataResult( hashValue, data);
+                HashDataResult ret = new HashDataResult(hashValue, data);
 
                 return ret;
             }
@@ -542,7 +556,6 @@ public abstract class NetAgentApi implements AgentApi
         return null;
     }
 
-
     @Override
     public SnapshotHandle create_snapshot( RemoteFSElem file )
     {
@@ -565,22 +578,23 @@ public abstract class NetAgentApi implements AgentApi
 
         return snapshot.release_snapshot(handle);
     }
-    
 
     protected CdpHandler getCdpHandler( CdpTicket t )
     {
         return cdpHandlerMap.get(t);
     }
+
     protected CdpHandler removeCdpHandler( CdpTicket t )
     {
         return cdpHandlerMap.remove(t);
     }
+
     protected void addCdpHandler( CdpTicket t, CdpHandler h )
     {
         cdpHandlerMap.put(t, h);
     }
 
-     @Override
+    @Override
     public boolean check_cdp( CdpTicket ticket )
     {
         throw new UnsupportedOperationException("Not supported yet.");
@@ -606,7 +620,6 @@ public abstract class NetAgentApi implements AgentApi
         throw new InvalidCdpTicketException(ticket);
     }
 
-
     @Override
     public List<CdpTicket> getCdpTickets()
     {
@@ -614,21 +627,21 @@ public abstract class NetAgentApi implements AgentApi
     }
 
     @Override
-    public void set_cdp_excludes(  CdpTicket ticket, List<Excludes> exclList ) throws InvalidCdpTicketException
+    public void set_cdp_excludes( CdpTicket ticket, List<Excludes> exclList ) throws InvalidCdpTicketException
     {
-        CdpHandler cdpHandler = getCdpHandler( ticket );
+        CdpHandler cdpHandler = getCdpHandler(ticket);
         if (cdpHandler == null)
-            throw new InvalidCdpTicketException(ticket );
+        {
+            throw new InvalidCdpTicketException(ticket);
+        }
 
-        cdpHandler.setExcludes( exclList );
+        cdpHandler.setExcludes(exclList);
 
     }
 
+  
 
-
-
-
-    
+    @Override
     public boolean mountVSMFS( InetAddress addr, int port, StoragePoolWrapper poolWrapper, String drive )
     {
         addr = validateAdressFromCommThread(addr);
@@ -653,7 +666,8 @@ public abstract class NetAgentApi implements AgentApi
 
         try
         {
-            fs = MountVSMFS.mount_vsmfs(addr, port, poolWrapper, drive, useFuse, !poolWrapper.getQry().isReadOnly());
+            IVfsEventProcessor processor = new VfsEventProcessor(addr, port, poolWrapper);
+            fs = MountVSMFS.mount_vsmfs(addr, port, poolWrapper, processor, drive, useFuse, !poolWrapper.getQry().isReadOnly());
 
             mountMap.put(poolWrapper.getPoolIdx(), fs);
             return true;
@@ -725,10 +739,11 @@ public abstract class NetAgentApi implements AgentApi
 
         /*Random rand = new Random();
 
-        rand.nextBytes(ret);*/
+         rand.nextBytes(ret);*/
 
         return null_array;
     }
+
     @Override
     public void deleteDir( RemoteFSElem path, boolean b ) throws IOException
     {
@@ -752,6 +767,7 @@ public abstract class NetAgentApi implements AgentApi
             }
         }
     }
+
     private boolean deleteRecursive( File dir ) throws IOException
     {
         if (dir.isDirectory())
@@ -782,7 +798,7 @@ public abstract class NetAgentApi implements AgentApi
         }
         if (!ret)
         {
-            throw new IOException( "Cannot recursive delete  " + dir.getAbsolutePath() );
+            throw new IOException("Cannot recursive delete  " + dir.getAbsolutePath());
         }
         return ret;
     }
@@ -816,7 +832,7 @@ public abstract class NetAgentApi implements AgentApi
     @Override
     public AttributeList get_attributes( RemoteFSElem file )
     {
-        throw new RuntimeException( "get_attributes ist obsolet" );
+        throw new RuntimeException("get_attributes ist obsolet");
     }
 
     @Override
@@ -836,20 +852,17 @@ public abstract class NetAgentApi implements AgentApi
         {
             ret = false;
         }
-        set_filetimes( wrapper );
+        set_filetimes(wrapper);
 
         return ret;
     }
-
-
-
 
     @Override
     public boolean create_symlink( RemoteFSElem remoteFSElem )
     {
         try
         {
-            return getFSElemAccessor().createSymlink( remoteFSElem.getPath(), remoteFSElem.getLinkPath());
+            return getFSElemAccessor().createSymlink(remoteFSElem.getPath(), remoteFSElem.getLinkPath());
         }
         catch (Exception e)
         {
@@ -863,7 +876,7 @@ public abstract class NetAgentApi implements AgentApi
         File f = new File(getFsFactory().convSystem2NativePath(elem.getPath()));
         try
         {
-            if (getFSElemAccessor().mkDir( f ))
+            if (getFSElemAccessor().mkDir(f))
             {
                 try
                 {
@@ -874,9 +887,9 @@ public abstract class NetAgentApi implements AgentApi
                 }
                 catch (Exception e)
                 {
-                    System.out.println("Error writing ACL-Info " +  f.getAbsolutePath() + ": " + e.getMessage());
+                    System.out.println("Error writing ACL-Info " + f.getAbsolutePath() + ": " + e.getMessage());
                 }
-                set_filetimes_named( elem );
+                set_filetimes_named(elem);
                 return true;
             }
         }
@@ -887,54 +900,71 @@ public abstract class NetAgentApi implements AgentApi
         return false;
     }
 
-
-
     protected boolean getBooleanOption( String name )
     {
         return getBooleanOption(name, false);
     }
+
     protected boolean getBooleanOption( String name, boolean def )
     {
-        if( options == null)
+        if (options == null)
+        {
             return def;
+        }
 
         String o = options.getProperty(name);
         if (o == null)
+        {
             return def;
+        }
 
         char ch = o.charAt(0);
         if ("1yYjJtT".indexOf(ch) != -1)
+        {
             return true;
+        }
 
         return false;
     }
-    protected String getOption( String name)
+
+    protected String getOption( String name )
     {
         return getOption(name, null);
     }
+
     protected String getOption( String name, String def )
     {
-        if( options == null)
+        if (options == null)
+        {
             return def;
+        }
 
         String o = options.getProperty(name);
         if (o == null)
+        {
             return def;
+        }
 
         return o;
     }
+
     protected int getIntOption( String name )
     {
         return getIntOption(name, 0);
     }
+
     protected int getIntOption( String name, int def )
     {
-        if( options == null)
+        if (options == null)
+        {
             return def;
+        }
 
         String o = options.getProperty(name);
         if (o == null)
+        {
             return def;
+        }
 
         try
         {
@@ -945,18 +975,24 @@ public abstract class NetAgentApi implements AgentApi
         }
         return 0;
     }
+
     protected long getLongOption( String name )
     {
         return getLongOption(name, 0);
     }
+
     protected long getLongOption( String name, long def )
     {
-        if( options == null)
+        if (options == null)
+        {
             return def;
+        }
 
         String o = options.getProperty(name);
         if (o == null)
+        {
             return def;
+        }
 
         try
         {
@@ -979,9 +1015,6 @@ public abstract class NetAgentApi implements AgentApi
         {
             data = ZipUtilities.lzf_decompressblock(data);
         }
-        return write( wrapper, data, pos);
+        return write(wrapper, data, pos);
     }
-
-
-
 }

@@ -12,9 +12,11 @@ import com.sun.jna.ptr.PointerByReference;
 import de.dimm.vsm.client.FSElemAccessor;
 import de.dimm.vsm.client.FileHandleData;
 import de.dimm.vsm.client.NetAgentApi;
+import de.dimm.vsm.fsutils.VirtualFSFile;
 import de.dimm.vsm.client.jna.LibKernel32;
 import de.dimm.vsm.client.jna.LibKernel32.FILETIME;
 import de.dimm.vsm.client.jna.LibKernel32.WIN32_STREAM_ID;
+import de.dimm.vsm.fsutils.VirtualFsFilemanager;
 import de.dimm.vsm.net.interfaces.AgentApi;
 import de.dimm.vsm.net.RemoteFSElem;
 import de.dimm.vsm.net.RemoteFSElemWrapper;
@@ -215,6 +217,35 @@ class WinFileHandleData extends FileHandleData
         return list;
     }
 }
+
+class VirtualFSFileHandleData extends FileHandleData
+{
+        
+   VirtualFSFile file;
+
+    public VirtualFSFileHandleData(VirtualFSFile file, boolean xa, RemoteFSElem elem)
+    {
+        super(elem);
+        this.file = file;
+    }
+
+    @Override
+    public boolean close()
+    {
+        return file.closeRead();
+    }
+
+    @Override
+    public RemoteFSElem getElem()
+    {
+        return elem;
+    }
+
+    public VirtualFSFile getFile()
+    {
+        return file;
+    }    
+}
 /**
  *
  * @author Administrator
@@ -279,14 +310,23 @@ public class WinFSElemAccessor extends FSElemAccessor
     @Override
     public RemoteFSElemWrapper open_handle( RemoteFSElem elem, int flags )
     {
-        HANDLE h = open_raw_handle( elem, flags );
+        FileHandleData data;
+        if (elem.isVirtualFS())
+        {
+            VirtualFSFile vfsFile = VirtualFsFilemanager.getFile(elem.getPath());
+            data = new VirtualFSFileHandleData(vfsFile, false, elem);            
+        }
+        else
+        {
+            HANDLE h = open_raw_handle( elem, flags );
 
-        if (h == null)
-            return null;
-        
-        WinFileHandleData data = new WinFileHandleData(h, false, elem);
+            if (h == null)
+                return null;
 
-        RemoteFSElemWrapper wrapper = new RemoteFSElemWrapper(newHandleValue++, /*xa*/false);
+            data = new WinFileHandleData(h, false, elem);
+        }
+
+        RemoteFSElemWrapper wrapper = new RemoteFSElemWrapper(newHandleValue++, /*xa*/false, elem.isVirtualFS());
 
         hash_map.put(wrapper.getHandle(), data);
 
@@ -324,9 +364,9 @@ public class WinFSElemAccessor extends FSElemAccessor
             return null;
         }
 
-        WinFileHandleData data = new WinFileHandleData(h, true, elem);
+        FileHandleData data = new WinFileHandleData(h, true, elem);
 
-        RemoteFSElemWrapper wrapper = new RemoteFSElemWrapper(newHandleValue++, /*xa*/true);
+        RemoteFSElemWrapper wrapper = new RemoteFSElemWrapper(newHandleValue++, /*xa*/true, elem.isVirtualFS());
 
         hash_map.put(wrapper.getHandle(), data);
 
@@ -339,10 +379,10 @@ public class WinFSElemAccessor extends FSElemAccessor
     {
         if (wrapper == null)
             return false;
-
+               
         super.close_handle(wrapper);
 
-        WinFileHandleData data = (WinFileHandleData) hash_map.remove(wrapper.getHandle());
+        FileHandleData data = hash_map.remove(wrapper.getHandle());
         if (data == null)
             return false;
 

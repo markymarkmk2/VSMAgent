@@ -6,6 +6,7 @@
 package de.dimm.vsm.client;
 
 import com.caucho.hessian.server.HessianServlet;
+import de.dimm.vsm.VSMFSLogger;
 import de.dimm.vsm.client.unix.UnixAgentApi;
 import de.dimm.vsm.client.win.WinAgentApi;
 import de.dimm.vsm.hash.HashFunctionPool;
@@ -17,6 +18,7 @@ import de.dimm.vsm.net.InvalidCdpTicketException;
 import de.dimm.vsm.net.RemoteFSElem;
 import de.dimm.vsm.net.RemoteFSElemWrapper;
 import de.dimm.vsm.net.StoragePoolWrapper;
+import de.dimm.vsm.net.VfsTicket;
 import de.dimm.vsm.net.interfaces.AgentApi;
 import de.dimm.vsm.net.interfaces.SnapshotHandle;
 import de.dimm.vsm.records.Excludes;
@@ -118,6 +120,7 @@ public class NetServlet extends HessianServlet implements AgentApi
     @Override
     public byte[] read( RemoteFSElemWrapper file, long pos, int bsize ) throws IOException
     {
+        VSMFSLogger.getLog().debug("read " + pos + "/" + bsize + " für " + file.getHandle());
         return api.read(file, pos, bsize);
     }
     @Override
@@ -312,7 +315,7 @@ public class NetServlet extends HessianServlet implements AgentApi
         return api.list_roots(mode);
     }
 
-
+  
 
 
 }

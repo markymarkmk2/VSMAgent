@@ -15,6 +15,7 @@ import de.dimm.vsm.client.jna.PosixWrapper;
 import de.dimm.vsm.client.jna.WinSnapshot;
 import de.dimm.vsm.client.win.WinAgentApi;
 import de.dimm.vsm.net.interfaces.AgentApi;
+import de.dimm.vsm.net.interfaces.ServerApi;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -22,9 +23,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Field;
+import java.net.Inet4Address;
+import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
 import java.util.concurrent.ThreadPoolExecutor;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
@@ -37,9 +41,8 @@ public class Main
 {
 
     static String source_str = "trunk";
-    static String version = "0.9.9";
+    static String version = "1.0.0";
     static Main me;
-    private static boolean agent_tcp = true;
     String work_dir;
     ServerConnector server_conn;
     //FCEListener fce_listener;
@@ -221,6 +224,8 @@ public class Main
      */
     static boolean debug = false;
     static boolean verbose = false;
+    
+    public static String test_alert_ip = null;
 
     public static boolean isVerbose()
     {
@@ -304,6 +309,10 @@ public class Main
             {
                 Logger.getLogger("VSMFS").setLevel(Level.TRACE);
             }
+            if (string.equals("-test-alert") && i < (args.length - 1)) 
+            {
+                test_alert_ip = args[i+1];
+            }
         }
 
        
@@ -370,6 +379,25 @@ public class Main
 //            catch (UnknownHostException unknownHostException)
 //            {
 //            }
+            if (test_alert_ip != null)
+            {
+                // EVERY 10 s
+                if ((cnt %10) == 0)
+                {
+                    try
+                    {
+                        InetAddress adr = Inet4Address.getByName(test_alert_ip);
+                        ServerApi api = Main.getServerConn().getServerApi(adr, 8080, false, false);
+                        System.out.println("Calling alert on " + test_alert_ip);
+                        api.alert("Test", "This is a test call" );
+                    }
+                    catch (Exception unknownHostException)
+                    {
+                        System.out.println("Exception Host " + test_alert_ip + ": " + unknownHostException.getMessage());
+                    }                
+                }                
+            }
+            
             // EVERY MINUTE
             if ((cnt %60) == 0)
             {

@@ -1,3 +1,9 @@
+Veränderungen in V1.0.0
+UPD: Schreibende Vorgänge Windows
+
+Veränderungen in V0.9.9
+UPD: Schreibende Vorgänge Windows
+
 Veränderungen in V0.9.6
 UPD: Support für Server-Feature Automounting
 

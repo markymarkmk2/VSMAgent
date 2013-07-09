@@ -9,6 +9,7 @@ import com.sun.jna.platform.win32.WinNT.HANDLE;
 import com.sun.jna.ptr.IntByReference;
 import com.sun.jna.ptr.LongByReference;
 import de.dimm.vsm.Utilities.CryptTools;
+import de.dimm.vsm.VSMFSLogger;
 import de.dimm.vsm.client.FSElemAccessor;
 import de.dimm.vsm.client.FileHandleData;
 import de.dimm.vsm.client.NetAgentApi;
@@ -19,6 +20,7 @@ import de.dimm.vsm.client.cdp.WinCdpHandler;
 import de.dimm.vsm.client.cdp.WinPlatformData;
 import de.dimm.vsm.client.cdp.fce.VSMCDPEventProcessor;
 import de.dimm.vsm.client.jna.LibKernel32;
+import de.dimm.vsm.fsutils.VirtualFSFile;
 import de.dimm.vsm.hash.HashFunctionPool;
 import de.dimm.vsm.net.CdpTicket;
 import de.dimm.vsm.net.interfaces.AgentApi;
@@ -269,11 +271,80 @@ public class WinAgentApi extends NetAgentApi
     }
 
 
+    @Override
+    public byte[] rawRead(  RemoteFSElemWrapper wrapper, long pos, int bsize )
+    {
+        FileHandleData fhd = getFSElemAccessor().get_handleData(wrapper);
+        if (fhd instanceof VirtualFSFileHandleData)
+        {
+            VirtualFSFileHandleData vfhd = (VirtualFSFileHandleData)fhd;
+            VirtualFSFile vfsFile = vfhd.getFile();
+            if (vfsFile.existsBlock(pos, bsize))
+            {
+                try
+                {
+                    byte[] blockData = vfsFile.fetchBlock(pos, bsize);
+                    return blockData;
+                }
+                catch (IOException iOException)
+                {
+                    VSMFSLogger.getLog().error("Error reading vfsFile data: ", iOException);
+                    return null;
+                }
+            }
+            else
+            {
+                VSMFSLogger.getLog().error("Non aligned read at " + pos + "/" + bsize + " for " + vfhd.getElem().getPath());
+            }
+        }
+        byte[] data = new byte[bsize];
+        
+        return rawRead(data, wrapper, pos, bsize);    
+    }
+
 
     @Override
     public byte[] rawRead( byte[] data, RemoteFSElemWrapper wrapper, long pos, int bsize )
     {
-        WinFileHandleData hdata = (WinFileHandleData)getFSElemAccessor().get_handleData(wrapper);
+        FileHandleData fhd = getFSElemAccessor().get_handleData(wrapper);
+        if (fhd instanceof VirtualFSFileHandleData)
+        {
+            VirtualFSFileHandleData vfhd = (VirtualFSFileHandleData)fhd;
+            VirtualFSFile vfsFile = vfhd.getFile();
+            if (vfsFile.existsBlock(pos, bsize))
+            {
+                try
+                {
+                    byte[] blockData = vfsFile.fetchBlock(pos, bsize);
+                    System.arraycopy(blockData, 0, data, 0, bsize);
+                }
+                catch (IOException iOException)
+                {
+                    VSMFSLogger.getLog().error("Error reading vfsFile data: ", iOException);
+                    return null;
+                }
+            }
+            else
+            {
+                VSMFSLogger.getLog().error("Non aligned read at " + pos + "/" + bsize + " for " + vfhd.getElem().getPath());
+                int rlen = vfhd.getFile().read(data, bsize, pos);
+                if (rlen < 0)
+                {
+                    VSMFSLogger.getLog().error("Vfhd read gave -1at " + pos + "/" + bsize + " for " + vfhd.getElem().getPath());
+                    return null;
+                }
+
+                // EMPTY REST
+                if (rlen < data.length)
+                {
+                    byte[] _data = new byte[rlen];
+                    System.arraycopy(data, 0, _data, 0, _data.length);
+                    data = _data;
+                }
+            }
+            return data;
+        }
+        WinFileHandleData hdata = (WinFileHandleData)fhd;
         if (hdata == null)
             return null;
         
@@ -289,7 +360,7 @@ public class WinAgentApi extends NetAgentApi
             }
             catch (IOException iOException)
             {
-                System.out.println("Error reading xa_data: " + iOException.getMessage());
+                System.out.println("Error reading data: " + iOException.getMessage());
                 return null;
             }
         }

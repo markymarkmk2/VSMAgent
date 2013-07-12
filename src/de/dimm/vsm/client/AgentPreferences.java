@@ -11,22 +11,65 @@ package de.dimm.vsm.client;
 public class AgentPreferences
 {
     
-    public static final int MAX_WRITE_BLOCKS = 250;
-    public static final int ASYNC_THRESHOLD_PERCENT = 30;
-    public static final long MAX_WAIT_MS = 120*1000;
+    private int maxWriteBlocks = 250;
+    private int asyncThresholdPercent = 30;
+    private long maxWaitMS = 120*1000;
+    private int maxLocalFileThreshold = 1024*1024;
+    private String bufferPath = "vfs_buffer";
+    private int maxBufferedFiles = 200;              // Achtung nicht zu groß: Das hier muss innerhlab des JDokan/Fuse-Threads abgearbeitet werden!
+    private long maxBufferedSize = 50l*(1024*1024);  // Achtung nicht zu groß: Das hier muss innerhlab des JDokan/Fuse-Threads abgearbeitet werden!
+    private int maxIdleAgeS = 10;                    // Länger als das bleibt eine Datei nicht im LocalBuffer
+    private int flushTimeoutS = 10;                  // Länger als dauert das warten auf den flush nicht
+    
+    static AgentPreferences prefs = new AgentPreferences();
+    
+    public static AgentPreferences getPrefs()
+    {
+        return prefs;
+    }
     
     
-    public static int getAsyncThresholdPercent()
+    public int getAsyncThresholdPercent()
     {
-        return ASYNC_THRESHOLD_PERCENT;
+        return asyncThresholdPercent;
     }
-    public static int getMaxWriteBlocks()
+    public int getMaxWriteBlocks()
     {
-        return MAX_WRITE_BLOCKS;
+        return maxWriteBlocks;
     }
-    public static long getMaxWaitMS()
+    public long getMaxWaitMS()
     {
-        return MAX_WAIT_MS;
+        return maxWaitMS;
+    }
+
+    public String getBufferPath()
+    {
+        return bufferPath;
+    }
+
+    public int getMaxBufferedFiles()
+    {
+        return maxBufferedFiles;
+    }
+
+    public long getMaxBufferedSize()
+    {
+        return maxBufferedSize;
+    }
+
+    public long getMaxLocalFileThreshold()
+    {
+        return maxLocalFileThreshold;
+    }
+
+    public int maxIdleAgeS()
+    {
+        return maxIdleAgeS;
+    }
+
+    public int getFlushTimeoutS()
+    {
+        return flushTimeoutS;
     }
     
 }

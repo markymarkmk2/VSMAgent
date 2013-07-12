@@ -7,7 +7,9 @@ package de.dimm.vsm.client;
 import de.dimm.vsm.Utilities.CommThread;
 import de.dimm.vsm.Utilities.CryptTools;
 import de.dimm.vsm.Utilities.ZipUtilities;
+import de.dimm.vsm.VSMFSLogger;
 import de.dimm.vsm.client.cdp.CdpHandler;
+import de.dimm.vsm.client.vfs.BufferedEventProcessor;
 import de.dimm.vsm.client.vfs.VfsEventProcessor;
 import de.dimm.vsm.fsutils.MountVSMFS;
 import de.dimm.vsm.fsutils.IVSMFS;
@@ -24,6 +26,7 @@ import de.dimm.vsm.net.interfaces.AgentApi;
 import de.dimm.vsm.net.interfaces.SnapshotHandle;
 import de.dimm.vsm.net.interfaces.SnapshotHandler;
 import de.dimm.vsm.records.Excludes;
+import de.dimm.vsm.vfs.IBufferedEventProcessor;
 import de.dimm.vsm.vfs.IVfsEventProcessor;
 import fr.cryptohash.Digest;
 import java.io.File;
@@ -84,9 +87,9 @@ public abstract class NetAgentApi implements AgentApi
     protected Properties options;
     protected SnapshotHandler snapshot;
     //protected CdpHandler cdp_handler;
-    private HashMap<CdpTicket, CdpHandler> cdpHandlerMap = new HashMap<CdpTicket, CdpHandler>();
+    private HashMap<CdpTicket, CdpHandler> cdpHandlerMap = new HashMap<>();
     protected HFManager hfManager;
-    HashMap<Long, IVSMFS> mountMap = new HashMap<Long, IVSMFS>();
+    HashMap<Long, IVSMFS> mountMap = new HashMap<>();
     //protected FileCacheManager cacheManager;
     int lastRdqlen = -1;
     int lastRdyqlen = -1;
@@ -117,7 +120,7 @@ public abstract class NetAgentApi implements AgentApi
         File[] files = fh.listFiles();
 
 
-        ArrayList<RemoteFSElem> list = new ArrayList<RemoteFSElem>();
+        ArrayList<RemoteFSElem> list = new ArrayList<>();
         if (files == null)
         {
             System.out.println("No files for " + dir.getPath());
@@ -150,7 +153,7 @@ public abstract class NetAgentApi implements AgentApi
     {
         File[] files = File.listRoots();
 
-        ArrayList<RemoteFSElem> list = new ArrayList<RemoteFSElem>();
+        ArrayList<RemoteFSElem> list = new ArrayList<>();
         if (files == null)
         {
             System.out.println("No Roots available");
@@ -336,8 +339,7 @@ public abstract class NetAgentApi implements AgentApi
         }
         catch (Exception iOException)
         {
-            System.out.println("Cannot create hash: " + iOException.getMessage());
-            iOException.printStackTrace();
+            VSMFSLogger.getLog().error("Cannot create hash: ", iOException);
         }
         finally
         {
@@ -613,8 +615,7 @@ public abstract class NetAgentApi implements AgentApi
         if (cdp_handler != null)
         {
             cdp_handler.stop_cdp();
-            cdp_handler.cleanup_cdp();
-            cdp_handler = null;
+            cdp_handler.cleanup_cdp();            
             return true;
         }
         throw new InvalidCdpTicketException(ticket);
@@ -644,6 +645,10 @@ public abstract class NetAgentApi implements AgentApi
     @Override
     public boolean mountVSMFS( InetAddress addr, int port, StoragePoolWrapper poolWrapper, String drive )
     {
+        String bufferPath = mkBufferPath(drive);
+        int maxBufferedFiles = 1000; // TODO
+        long maxBufferedSize = 100l * (1024*1024);
+        
         addr = validateAdressFromCommThread(addr);
 
         IVSMFS fs;
@@ -659,22 +664,29 @@ public abstract class NetAgentApi implements AgentApi
         }
         catch (Exception e)
         {
-            e.printStackTrace();
+            VSMFSLogger.getLog().error("Cannot mount: ", e);
         }
 
         boolean useFuse = !Main.is_win();
 
         try
         {
-            IVfsEventProcessor processor = new VfsEventProcessor(addr, port, poolWrapper);
+            IVfsEventProcessor proc = new VfsEventProcessor(addr, port, poolWrapper);            
+            IBufferedEventProcessor processor = new BufferedEventProcessor(proc); 
+            
+            
             fs = MountVSMFS.mount_vsmfs(addr, port, poolWrapper, processor, drive, useFuse, !poolWrapper.getQry().isReadOnly());
 
             mountMap.put(poolWrapper.getPoolIdx(), fs);
+            
+            // Starte irgendwelche reste
+            processor.init();
+            
             return true;
         }
         catch (Exception e)
         {
-            e.printStackTrace();
+            VSMFSLogger.getLog().error("Error mountVSMFS", e);
         }
         return false;
     }
@@ -682,8 +694,6 @@ public abstract class NetAgentApi implements AgentApi
     @Override
     public boolean unmountVSMFS( InetAddress addr, int port, StoragePoolWrapper poolWrapper )
     {
-        addr = validateAdressFromCommThread(addr);
-
         IVSMFS fs;
         try
         {
@@ -699,7 +709,7 @@ public abstract class NetAgentApi implements AgentApi
         }
         catch (Exception e)
         {
-            e.printStackTrace();
+            VSMFSLogger.getLog().error("Error unmountVSMFS", e);
         }
         return false;
     }
@@ -707,8 +717,6 @@ public abstract class NetAgentApi implements AgentApi
     @Override
     public boolean isMountedVSMFS( InetAddress addr, int port, StoragePoolWrapper poolWrapper )
     {
-        addr = validateAdressFromCommThread(addr);
-
         boolean ret = false;
         try
         {
@@ -719,7 +727,7 @@ public abstract class NetAgentApi implements AgentApi
         }
         catch (Exception e)
         {
-            e.printStackTrace();
+            VSMFSLogger.getLog().error("Error isMountedVSMFS", e);
         }
         return ret;
     }
@@ -1016,5 +1024,16 @@ public abstract class NetAgentApi implements AgentApi
             data = ZipUtilities.lzf_decompressblock(data);
         }
         return write(wrapper, data, pos);
+    }
+
+    private String mkBufferPath( String drive )
+    {
+        if (drive == null)
+            drive = Long.toString(System.currentTimeMillis());
+        drive = drive.replace(":", "_");
+        drive = drive.replace("/", "_");
+        drive = drive.replace("\\", "_");
+        String ret = "vfs_buffer_" + drive;
+        return ret;
     }
 }

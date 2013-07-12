@@ -16,6 +16,7 @@ import de.dimm.vsm.fsutils.VirtualFSFile;
 import de.dimm.vsm.client.jna.LibKernel32;
 import de.dimm.vsm.client.jna.LibKernel32.FILETIME;
 import de.dimm.vsm.client.jna.LibKernel32.WIN32_STREAM_ID;
+import de.dimm.vsm.fsutils.IVirtualFSFile;
 import de.dimm.vsm.fsutils.VirtualFsFilemanager;
 import de.dimm.vsm.net.interfaces.AgentApi;
 import de.dimm.vsm.net.RemoteFSElem;
@@ -221,9 +222,9 @@ class WinFileHandleData extends FileHandleData
 class VirtualFSFileHandleData extends FileHandleData
 {
         
-   VirtualFSFile file;
+   IVirtualFSFile file;
 
-    public VirtualFSFileHandleData(VirtualFSFile file, boolean xa, RemoteFSElem elem)
+    public VirtualFSFileHandleData(IVirtualFSFile file, boolean xa, RemoteFSElem elem)
     {
         super(elem);
         this.file = file;
@@ -241,7 +242,7 @@ class VirtualFSFileHandleData extends FileHandleData
         return elem;
     }
 
-    public VirtualFSFile getFile()
+    public IVirtualFSFile getFile()
     {
         return file;
     }    
@@ -313,7 +314,7 @@ public class WinFSElemAccessor extends FSElemAccessor
         FileHandleData data;
         if (elem.isVirtualFS())
         {
-            VirtualFSFile vfsFile = VirtualFsFilemanager.getFile(elem.getPath());
+            IVirtualFSFile vfsFile = VirtualFsFilemanager.getSingleton().getFile(elem.getPath());
             data = new VirtualFSFileHandleData(vfsFile, false, elem);            
         }
         else

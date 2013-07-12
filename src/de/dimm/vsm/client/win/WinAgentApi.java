@@ -20,6 +20,7 @@ import de.dimm.vsm.client.cdp.WinCdpHandler;
 import de.dimm.vsm.client.cdp.WinPlatformData;
 import de.dimm.vsm.client.cdp.fce.VSMCDPEventProcessor;
 import de.dimm.vsm.client.jna.LibKernel32;
+import de.dimm.vsm.fsutils.IVirtualFSFile;
 import de.dimm.vsm.fsutils.VirtualFSFile;
 import de.dimm.vsm.hash.HashFunctionPool;
 import de.dimm.vsm.net.CdpTicket;
@@ -278,7 +279,7 @@ public class WinAgentApi extends NetAgentApi
         if (fhd instanceof VirtualFSFileHandleData)
         {
             VirtualFSFileHandleData vfhd = (VirtualFSFileHandleData)fhd;
-            VirtualFSFile vfsFile = vfhd.getFile();
+            IVirtualFSFile vfsFile = vfhd.getFile();
             if (vfsFile.existsBlock(pos, bsize))
             {
                 try
@@ -310,7 +311,7 @@ public class WinAgentApi extends NetAgentApi
         if (fhd instanceof VirtualFSFileHandleData)
         {
             VirtualFSFileHandleData vfhd = (VirtualFSFileHandleData)fhd;
-            VirtualFSFile vfsFile = vfhd.getFile();
+            IVirtualFSFile vfsFile = vfhd.getFile();
             if (vfsFile.existsBlock(pos, bsize))
             {
                 try

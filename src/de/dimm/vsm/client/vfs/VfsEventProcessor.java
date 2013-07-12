@@ -5,6 +5,7 @@
 package de.dimm.vsm.client.vfs;
 
 import de.dimm.vsm.VSMFSLogger;
+import de.dimm.vsm.client.AgentPreferences;
 import de.dimm.vsm.vfs.IVfsEventProcessor;
 import de.dimm.vsm.client.Main;
 import de.dimm.vsm.net.RemoteFSElem;
@@ -23,8 +24,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  *
@@ -154,5 +153,11 @@ public class VfsEventProcessor implements IVfsEventProcessor
         {
             future.cancel(true);
         }
+    }
+
+    @Override
+    public long getMaxLocalFileThreshold()
+    {
+        return AgentPreferences.getPrefs().getMaxLocalFileThreshold();
     }
 }

@@ -5,6 +5,7 @@
 package de.dimm.vsm.client.vfs;
 
 import com.thoughtworks.xstream.XStream;
+import de.dimm.vsm.Utilities.WinFileUtilities;
 import de.dimm.vsm.VSMFSLogger;
 import de.dimm.vsm.client.AgentPreferences;
 import de.dimm.vsm.fsutils.IVirtualFSFile;
@@ -335,8 +336,8 @@ public class BufferedEventProcessor implements IBufferedEventProcessor, IVfsBuff
     @Override
     public IVirtualFSFile createDelegate(RemoteFSElem fseNode)
     {
-        // Small enough for Local FileBuff ?
-        if (fseNode.getDataSize() < getMaxLocalFileThreshold() && isFsBufferFree())
+        // Small enough for Local FileBuff and not 0 (we want to create empty files at once) ?
+        if (fseNode.getDataSize() > 0 && fseNode.getDataSize() < getMaxLocalFileThreshold() && isFsBufferFree())
         {
             // New Random Filename
             String filename = UUID.randomUUID().toString();
@@ -612,5 +613,25 @@ public class BufferedEventProcessor implements IBufferedEventProcessor, IVfsBuff
     {
         return (map.size() * 100) / maxBufferedFiles;
     }
+
+    @Override
+    public void checkForFlush( String path )
+    {
+        BufferFileListEntry bfe = map.remove(path);
+        if (bfe != null)
+        {
+            List<RemoteFSElem> list = new ArrayList<>();
+            list.add(bfe.getFseNode());
+            try
+            {
+                process(list);                
+            }
+            catch (IOException iOException)
+            {
+                VSMFSLogger.getLog().error("checkForFlush failed for " + bfe.getFseNode().getPath(), iOException);
+            }
+        }
+    }
+
     
 }

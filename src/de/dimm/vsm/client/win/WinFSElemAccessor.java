@@ -16,6 +16,7 @@ import de.dimm.vsm.fsutils.VirtualFSFile;
 import de.dimm.vsm.client.jna.LibKernel32;
 import de.dimm.vsm.client.jna.LibKernel32.FILETIME;
 import de.dimm.vsm.client.jna.LibKernel32.WIN32_STREAM_ID;
+import static de.dimm.vsm.client.win.WinRemoteFSElemFactory.read_win_data;
 import de.dimm.vsm.fsutils.IVirtualFSFile;
 import de.dimm.vsm.fsutils.VirtualFsFilemanager;
 import de.dimm.vsm.net.interfaces.AgentApi;
@@ -263,6 +264,17 @@ public class WinFSElemAccessor extends FSElemAccessor
 //        hash_map = new HashMap<Long, WinFileHandleData>();
     }
 
+    @Override
+    public boolean exists( RemoteFSElem elem )
+    {
+        WString path = new WString( WinRemoteFSElemFactory.getLongPath(elem));        
+        LibKernel32.WIN32_FILE_ATTRIBUTE_DATA data =  new LibKernel32.WIN32_FILE_ATTRIBUTE_DATA();        
+        return read_win_data( path, data );
+    }
+
+
+
+    
 
 
     public HANDLE open_raw_handle( RemoteFSElem elem, int flags )

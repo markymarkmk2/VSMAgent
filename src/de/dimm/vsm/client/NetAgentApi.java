@@ -842,6 +842,12 @@ public abstract class NetAgentApi implements AgentApi
     {
         throw new RuntimeException("get_attributes ist obsolet");
     }
+    
+    @Override
+    public boolean exists( RemoteFSElem file )
+    {
+        return getFSElemAccessor().exists(file);
+    }
 
     @Override
     public boolean set_attributes( RemoteFSElemWrapper wrapper )

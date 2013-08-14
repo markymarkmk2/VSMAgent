@@ -79,6 +79,13 @@ public class NetServlet extends HessianServlet implements AgentApi
         return api.list_roots();
     }
 
+    @Override
+    public boolean exists( RemoteFSElem file )
+    {
+        return api.exists(file);
+    }
+
+    
    
 
     @Override

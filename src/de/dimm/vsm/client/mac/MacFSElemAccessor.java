@@ -61,7 +61,11 @@ public class MacFSElemAccessor extends FSElemAccessor
         super(api);
         this.api = api;
     }
-
+ @Override
+    public boolean exists( RemoteFSElem path )
+    {        
+        return new File(path.getPath()).exists();
+    }
     @Override
     public RemoteFSElemWrapper open_handle( RemoteFSElem elem, int flags )
     {

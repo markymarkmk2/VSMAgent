@@ -61,6 +61,14 @@ public class UnixFSElemAccessor extends FSElemAccessor
     }
 
     @Override
+    public boolean exists( RemoteFSElem path )
+    {
+        String npath = api.getFsFactory().convSystem2NativePath(path.getPath());
+        return new File(npath).exists();
+    }
+    
+
+    @Override
     public RemoteFSElemWrapper open_handle( RemoteFSElem elem, int flags )
     {        
         String npath = api.getFsFactory().convSystem2NativePath(elem.getPath());

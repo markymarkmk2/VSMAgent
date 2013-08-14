@@ -172,5 +172,7 @@ public abstract class FSElemAccessor
         return l.toArray(new String[0]);
     }
 
+    public abstract boolean exists( RemoteFSElem path );
 
+   
 }

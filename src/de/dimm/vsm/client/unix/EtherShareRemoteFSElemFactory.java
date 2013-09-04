@@ -263,6 +263,7 @@ public class EtherShareRemoteFSElemFactory extends RemoteFSElemFactory
                     return null;
                 }
             }
+            elem.setStDev(stat.dev());            
         }
         else
         {

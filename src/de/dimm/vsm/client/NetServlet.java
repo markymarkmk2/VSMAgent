@@ -18,7 +18,6 @@ import de.dimm.vsm.net.InvalidCdpTicketException;
 import de.dimm.vsm.net.RemoteFSElem;
 import de.dimm.vsm.net.RemoteFSElemWrapper;
 import de.dimm.vsm.net.StoragePoolWrapper;
-import de.dimm.vsm.net.VfsTicket;
 import de.dimm.vsm.net.interfaces.AgentApi;
 import de.dimm.vsm.net.interfaces.SnapshotHandle;
 import de.dimm.vsm.records.Excludes;
@@ -66,6 +65,11 @@ public class NetServlet extends HessianServlet implements AgentApi
     }
 
 
+    @Override
+    public ArrayList<RemoteFSElem> list_dir_local( RemoteFSElem dir, boolean listAcl )
+    {
+        return api.list_dir_local(dir, listAcl);
+    }
 
     @Override
     public ArrayList<RemoteFSElem> list_dir( RemoteFSElem dir, boolean listAcl )

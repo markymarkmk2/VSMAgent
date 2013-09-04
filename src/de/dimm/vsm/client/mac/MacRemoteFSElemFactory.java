@@ -290,6 +290,7 @@ public class MacRemoteFSElemFactory extends RemoteFSElemFactory
 
     
 
+    @Override
     public String getFsName( String path )
     {
         statBuffer.rewind();
@@ -297,6 +298,7 @@ public class MacRemoteFSElemFactory extends RemoteFSElemFactory
         return getFSType();
     }
 
+    @Override
     public synchronized  RemoteFSElem create_elem( File fh, boolean lazyAclInfo )
     {
         String path = fh.getAbsolutePath();
@@ -353,6 +355,7 @@ public class MacRemoteFSElemFactory extends RemoteFSElemFactory
                     return null;
                 }
             }
+            elem.setStDev(stat.dev());
         }
         else
         {

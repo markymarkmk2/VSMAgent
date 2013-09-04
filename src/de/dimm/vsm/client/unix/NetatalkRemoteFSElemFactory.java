@@ -106,6 +106,7 @@ public class NetatalkRemoteFSElemFactory extends RemoteFSElemFactory
                     return null;
                 }
             }
+            elem.setStDev(stat.dev());            
         }
         else
         {

@@ -149,6 +149,56 @@ public abstract class NetAgentApi implements AgentApi
     }
 
     @Override
+    public ArrayList<RemoteFSElem> list_dir_local( RemoteFSElem dir, boolean lazyAclInfo )
+    {
+
+        File fh = new File(getFsFactory().convSystem2NativePath(dir.getPath()));
+        File[] files = fh.listFiles();
+
+        // Reload dev if necessary (artificial dir)
+        long dev = dir.getStDev();
+        if (dev == 0)
+        {
+            RemoteFSElem elem = getFsFactory().create_elem(fh, true);
+            if (elem != null)
+            {
+                dev = elem.getStDev();
+                System.out.println("Reloaded dev  " + dev + " for path " + dir.getPath());
+            }
+        }
+
+        ArrayList<RemoteFSElem> list = new ArrayList<>();
+        if (files == null)
+        {
+            System.out.println("No files for " + dir.getPath());
+            return list;
+        }
+        detectRsrcMode(fh, files);
+
+        Arrays.sort(files, new FileComparator());
+
+
+        for (int i = 0; i < files.length; i++)
+        {
+            File file = files[i];
+
+            if (isRsrcEntry(file))
+            {
+                continue;
+            }
+
+            //if ()
+            RemoteFSElem elem = getFsFactory().create_elem(file, lazyAclInfo);
+            // Nur on local device adden
+            if ( dev == 0 || elem.getStDev() == dev) 
+            {
+                list.add(elem);
+            }
+        }
+        return list;
+    }
+
+    @Override
     public ArrayList<RemoteFSElem> list_roots()
     {
         File[] files = File.listRoots();

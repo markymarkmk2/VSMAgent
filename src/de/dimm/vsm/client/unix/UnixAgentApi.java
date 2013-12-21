@@ -216,8 +216,8 @@ public class UnixAgentApi extends NetAgentApi
     public byte[] rawRead(  byte[] data, RemoteFSElemWrapper wrapper, long pos, int bsize )
     {
         RandomAccessFile h = getNativeAccesor().get_handle(wrapper);
-        int real_rlen = 0;
-        int xa_offset = 0;
+        int real_rlen;
+        int xa_offset;
 
         int r = getRsrcMode();
 
@@ -272,7 +272,7 @@ public class UnixAgentApi extends NetAgentApi
             return -1;
         }
 
-        int xa_offset = 0;
+        int xa_offset;
 
         int r = getRsrcMode();
 
@@ -295,6 +295,7 @@ public class UnixAgentApi extends NetAgentApi
         }
         catch (IOException iOException)
         {
+            System.out.println("IOException in write: " + iOException.getMessage());
             return -1;
         }
         return data.length;
@@ -318,19 +319,21 @@ public class UnixAgentApi extends NetAgentApi
             }
             RandomAccessFile h = getNativeAccesor().get_handle(wrapper);
 
-            byte[] data = null;
+            byte[] data;
             try
             {
                 data = read(wrapper, 0, (int) h.length());
             }
             catch (IOException iOException)
             {
+                System.out.println("IOException in read: " + iOException.getMessage());
                 return null;
             }
             return data;
         }
         catch (Exception e)
         {
+            System.out.println("Exception in read: " + e.getMessage());
         }
         finally
         {
@@ -384,6 +387,7 @@ public class UnixAgentApi extends NetAgentApi
         }
         catch (Exception e)
         {
+            System.out.println("Exception in read: " + e.getMessage());
         }
         finally
         {

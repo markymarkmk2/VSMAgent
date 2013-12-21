@@ -12,7 +12,6 @@ import de.dimm.vsm.client.unix.UnixAgentApi;
 import de.dimm.vsm.client.unix.UnixMultiThreadedFileReader;
 import de.dimm.vsm.client.win.WinAgentApi;
 import de.dimm.vsm.client.win.WinMultiThreadedFileReader;
-import de.dimm.vsm.hash.HashFunctionPool;
 import de.dimm.vsm.net.RemoteFSElem;
 import de.dimm.vsm.net.RemoteFSElemWrapper;
 import fr.cryptohash.Digest;

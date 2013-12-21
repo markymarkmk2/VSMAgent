@@ -15,6 +15,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.nio.channels.FileLock;
 import org.jruby.ext.posix.POSIX;
 
 
@@ -74,6 +75,7 @@ public class UnixFSElemAccessor extends FSElemAccessor
         String npath = api.getFsFactory().convSystem2NativePath(elem.getPath());
 
         RandomAccessFile fh = null;
+        FileLock lock = null;
         try
         {
             if (flags == AgentApi.FL_RDONLY)
@@ -84,10 +86,36 @@ public class UnixFSElemAccessor extends FSElemAccessor
             {
                 fh = new RandomAccessFile(npath, "rw");
             }
+            
+            // Try Lock
+            if (fh != null)
+            {
+                lock = fh.getChannel().tryLock(0, Integer.MAX_VALUE, /*shared*/ true);
+                if (lock == null) 
+                {
+                    fh.close();
+                    System.out.println("File is locked, skipping: " + npath );
+                    return null;
+                }                
+            }
         }
-        catch (FileNotFoundException fileNotFoundException)
-        {
+        catch (IOException  exc)
+        {            
+            System.out.println("Exception on open, skipping: " + npath + ": " + exc.getMessage() );
             return null;
+        }
+        finally
+        {
+            if (lock != null)
+            {
+                try
+                {
+                    lock.release();
+                }
+                catch (IOException iOException)
+                {
+                }
+            }
         }
 
         UnixFileHandleData data = new UnixFileHandleData(elem,fh);
@@ -103,6 +131,8 @@ public class UnixFSElemAccessor extends FSElemAccessor
     public RemoteFSElemWrapper open_xa_handle( RemoteFSElem elem, int flags )
     {
         RandomAccessFile fh = null;
+        FileLock lock = null;
+        
         String npath = api.getFsFactory().convSystem2NativePath(elem.getPath());
         String path = getXAPath( npath );
         try
@@ -127,10 +157,35 @@ public class UnixFSElemAccessor extends FSElemAccessor
                     }
                 }
             }
+            // Try Lock
+            if (fh != null)
+            {
+                lock = fh.getChannel().tryLock(0, Integer.MAX_VALUE, /*shared*/ true);
+                if (lock == null) 
+                {
+                    fh.close();
+                    System.out.println("File is locked, skipping: " + npath );
+                    return null;
+                }                
+            }
         }
-        catch (FileNotFoundException fileNotFoundException)
-        {
+        catch (IOException  exc)
+        {            
+            System.out.println("Exception on open, skipping: " + npath + ": " + exc.getMessage() );
             return null;
+        }
+        finally
+        {
+            if (lock != null)
+            {
+                try
+                {
+                    lock.release();
+                }
+                catch (IOException iOException)
+                {
+                }
+            }
         }
 
         UnixFileHandleData data = new UnixFileHandleData(elem,fh);
@@ -204,6 +259,7 @@ public class UnixFSElemAccessor extends FSElemAccessor
         }
         catch (Exception e)
         {
+            System.out.println("Exception on createSymlink: " + path + "->" + linkPath + ": " + e.getMessage() );
         }
         return false;
     }

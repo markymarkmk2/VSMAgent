@@ -58,12 +58,27 @@ public class ServerConnector
     public static final String keyStore = "vsmkeystore2.jks";
     public static final String keyPwd = "123456";
 
+    private static int connTimeout = 5000;
+    private static int txTimeout = 60*1000;
+    
     List<ServerTicket> serverList;
 
     public ServerConnector()
     {
-        serverList = new ArrayList<ServerTicket>();
+        serverList = new ArrayList<>();
     }
+
+    public static void setConnTimeout( int connTimeout )
+    {
+        ServerConnector.connTimeout = connTimeout;
+    }
+
+    public static void setTxTimeout( int txTimeout )
+    {
+        ServerConnector.txTimeout = txTimeout;
+    }
+    
+    
 
     public ServerApi connect( InetAddress adress, int port, boolean ssl, boolean tcp )
     {
@@ -130,7 +145,7 @@ public class ServerConnector
         int idx = serverList.indexOf(tk);
         if (idx >= 0)
         {
-            tk = serverList.remove(idx);
+            serverList.remove(idx);
             //tk.api.close();
         }
     }
@@ -143,7 +158,7 @@ public class ServerConnector
 
         try
         {
-            RemoteCallFactory factory = new RemoteCallFactory(adress, port, path, ssl, tcp);
+            RemoteCallFactory factory = new RemoteCallFactory(adress, port, path, ssl, tcp, connTimeout, txTimeout);
 
             api = (ServerApi) factory.create(ServerApi.class);
         }

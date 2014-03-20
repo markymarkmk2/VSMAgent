@@ -58,8 +58,8 @@ public class ServerConnector
     public static final String keyStore = "vsmkeystore2.jks";
     public static final String keyPwd = "123456";
 
-    private static int connTimeout = 5000;
-    private static int txTimeout = 60*1000;
+    private static int connTimeout = 10*1000;
+    private static int txTimeout = 1800*1000;
     
     List<ServerTicket> serverList;
 

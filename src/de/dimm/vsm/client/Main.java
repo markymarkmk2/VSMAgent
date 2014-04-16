@@ -638,7 +638,7 @@ public class Main
         }
         if (!workingDirectoryPath.exists())
         {
-            workingDirectoryPath.mkdir();
+            workingDirectoryPath.mkdirs();
         }
         return workingDirectoryPath.getAbsolutePath();
     }

@@ -34,13 +34,21 @@ import java.util.Properties;
 public class NetServlet extends HessianServlet implements AgentApi
 {
 
-    NetAgentApi api;
+    AgentApi api;
 
 
-    private NetServlet(NetAgentApi api)
+    private NetServlet(AgentApi api)
     {               
         this.api = api;
     }
+    static public NetServlet createMagicWinNetServlet() throws Exception
+    {       
+        HashFunctionPool pool;
+        
+        pool = new HashFunctionPool(10);
+        return new NetServlet( new TestMagicNetAgentApi(new WinAgentApi(pool)));
+    }
+    
     static public NetServlet createWinNetServlet() throws Exception
     {       
         HashFunctionPool pool;
@@ -195,13 +203,13 @@ public class NetServlet extends HessianServlet implements AgentApi
     }
 
     @Override
-    public boolean check_cdp( CdpTicket ticket )
+    public boolean check_cdp( CdpTicket ticket ) throws InvalidCdpTicketException
     {
         return api.check_cdp(ticket);
     }
 
     @Override
-    public boolean pause_cdp( CdpTicket ticket )
+    public boolean pause_cdp( CdpTicket ticket ) throws InvalidCdpTicketException
     {
         return api.pause_cdp(ticket);
     }
@@ -298,14 +306,20 @@ public class NetServlet extends HessianServlet implements AgentApi
         return api.readAclInfo(dir);
     }
 
-    void idle()
+    void idle() 
     {
-        api.idle();
+        if (api instanceof NetAgentApi)
+        {
+            ((NetAgentApi)api).idle();
+        }
     }
-
+    
     public void resetFileReaders()
     {
-        api.getFSElemAccessor().resetFileReaders();
+        if (api instanceof NetAgentApi)
+        {
+            ((NetAgentApi)api).getFSElemAccessor().resetFileReaders();
+        }
     }
 
     @Override
@@ -326,7 +340,7 @@ public class NetServlet extends HessianServlet implements AgentApi
         return api.list_roots(mode);
     }
 
-  
+
 
 
 }

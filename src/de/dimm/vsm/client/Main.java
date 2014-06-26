@@ -50,6 +50,7 @@ public class Main
     
     // START WITH 50 BLOCKS AKA 50MB CACHE
     public static int CACHE_FILE_FLOCKS = 50;
+    private static boolean doMagicFiles = false;
 
     public static void print_system_property( String key )
     {
@@ -77,6 +78,7 @@ public class Main
         }
         return true;
     }
+    
 
     void init()
     {
@@ -313,6 +315,10 @@ public class Main
             {
                 test_alert_ip = args[i+1];
             }
+            if (string.equals("-magic-files")) 
+            {
+                doMagicFiles = true;
+            }
         }
 
        
@@ -479,7 +485,16 @@ public class Main
         try
         {
             if (is_win())
-                netServlet = NetServlet.createWinNetServlet();
+            {
+                if (doMagicFiles)
+                {
+                    netServlet = NetServlet.createMagicWinNetServlet();
+                }
+                else
+                {
+                    netServlet = NetServlet.createWinNetServlet();
+                }
+            }
             else if (is_osx())
                 netServlet = NetServlet.createMacNetServlet(cdpIpFilter);
             else 

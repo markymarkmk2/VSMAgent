@@ -15,11 +15,12 @@ import de.dimm.vsm.net.StoragePoolWrapper;
 import de.dimm.vsm.net.interfaces.AgentApi;
 import de.dimm.vsm.net.interfaces.SnapshotHandle;
 import de.dimm.vsm.records.Excludes;
-import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 
 /**
@@ -29,7 +30,10 @@ import java.util.Properties;
 public class TestMagicNetAgentApi implements AgentApi {
 
     NetAgentApi realApi;
-
+    
+    Map<Long, RemoteFSElem> siteMap = new HashMap<>();
+    Map<String, Long> sizeMap = new HashMap<>();
+    
     public TestMagicNetAgentApi( NetAgentApi reapApi ) {
         this.realApi = reapApi;
     }
@@ -67,12 +71,19 @@ public class TestMagicNetAgentApi implements AgentApi {
 
     @Override
     public RemoteFSElemWrapper open_data( RemoteFSElem file, int flags ) throws IOException {
-        
-        return realApi.open_data(mapFile( file), flags );
+        RemoteFSElemWrapper ret = realApi.open_data(mapFile( file), flags );
+        if (isMagicSize(file))
+        {
+            siteMap.put(ret.getHandle(), file);
+        }
+                
+        return ret;
+
     }
 
     @Override
     public boolean close_data( RemoteFSElemWrapper file ) throws IOException {
+        siteMap.remove(file.getHandle());
         return realApi.close_data(file);
     }
 
@@ -98,6 +109,12 @@ public class TestMagicNetAgentApi implements AgentApi {
 
     @Override
     public String read_hash( RemoteFSElemWrapper file, long pos, int bsize, String alg ) throws IOException {
+        RemoteFSElem elem = siteMap.get(file.getHandle());
+        if (isMagicSize(elem))
+        {
+            pos = 0;
+            //bsize = sizeMap.get(elem.getPath()).intValue();
+        }
         return realApi.read_hash(file, pos, bsize, alg);
     }
 
@@ -108,6 +125,12 @@ public class TestMagicNetAgentApi implements AgentApi {
 
     @Override
     public byte[] read( RemoteFSElemWrapper file, long pos, int bsize ) throws IOException {
+        RemoteFSElem elem = siteMap.get(file.getHandle());
+        if (isMagicSize(elem))
+        {
+            pos = 0;
+            //bsize = sizeMap.get(elem.getPath()).intValue();           
+        }        
         return realApi.read(file, pos, bsize);
     }
 
@@ -118,11 +141,23 @@ public class TestMagicNetAgentApi implements AgentApi {
 
     @Override
     public HashDataResult read_and_hash( RemoteFSElemWrapper file, long pos, int bsize ) throws IOException {
+        RemoteFSElem elem = siteMap.get(file.getHandle());
+        if (isMagicSize(elem))
+        {
+            pos = 0;
+            //bsize = sizeMap.get(elem.getPath()).intValue();          
+        }              
         return realApi.read_and_hash(file, pos, bsize);
     }
 
     @Override
     public CompEncDataResult read_and_hash_encrypted_compressed( RemoteFSElemWrapper file, long pos, int bsize, boolean enc, boolean comp ) throws IOException {
+        RemoteFSElem elem = siteMap.get(file.getHandle());
+        if (isMagicSize(elem))
+        {
+            pos = 0;
+            //bsize = sizeMap.get(elem.getPath()).intValue();        
+        }              
         return realApi.read_and_hash_encrypted_compressed(file, pos, bsize, enc, comp);
     }
 
@@ -275,10 +310,23 @@ public class TestMagicNetAgentApi implements AgentApi {
                     addList.add(newElem);
                 }
             }
+            if (isMagicSize(elem))
+            {
+                sizeMap.put(elem.getPath(),elem.getDataSize());
+                long cnt = Integer.parseInt(elem.getName().split("\\.")[1]);
+                elem.setDataSize(cnt*1000*1000);
+            }
         }        
         
         list.addAll(addList);        
         return list;
+    }
+
+    private boolean isMagicSize( RemoteFSElem file ) {
+        if (file == null)
+            return false;
+        
+        return file.getName().startsWith("MagicS.");
     }
     
 }

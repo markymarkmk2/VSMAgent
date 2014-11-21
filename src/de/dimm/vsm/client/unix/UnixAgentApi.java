@@ -244,7 +244,7 @@ public class UnixAgentApi extends NetAgentApi
                 return null;
             }
         }
-        catch (IOException iOException)
+        catch (Exception iOException)
         {
             System.out.println("IOException in read: " + iOException.getMessage());
             //iOException.printStackTrace();

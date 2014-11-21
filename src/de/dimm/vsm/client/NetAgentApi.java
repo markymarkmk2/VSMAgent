@@ -11,6 +11,8 @@ import de.dimm.vsm.VSMFSLogger;
 import de.dimm.vsm.client.cdp.CdpHandler;
 import de.dimm.vsm.client.vfs.BufferedEventProcessor;
 import de.dimm.vsm.client.vfs.VfsEventProcessor;
+import de.dimm.vsm.client.win.WinAgentApi;
+import de.dimm.vsm.dokan.VfsDokanVSMFS;
 import de.dimm.vsm.fsutils.MountVSMFS;
 import de.dimm.vsm.fsutils.IVSMFS;
 import de.dimm.vsm.hash.HashFunctionPool;
@@ -97,6 +99,13 @@ public abstract class NetAgentApi implements AgentApi
    
     void idle()
     {
+        for (IVSMFS fs: mountMap.values()) {
+            if (fs instanceof VfsDokanVSMFS) {
+                VfsDokanVSMFS dvfs = (VfsDokanVSMFS)fs;
+                String stat = dvfs.printStatistics();
+                System.out.println( stat );
+            }
+        }
     }
 
     abstract public FSElemAccessor getFSElemAccessor();
@@ -879,7 +888,7 @@ public abstract class NetAgentApi implements AgentApi
             String s = getFsFactory().readAclInfo(dir);
             return s;
         }
-        catch (IOException iOException)
+        catch (Exception iOException)
         {
             System.out.println("Fehler beim Lesen der ACLInfos von " + dir.getPath() + ": " + iOException.getMessage());
         }

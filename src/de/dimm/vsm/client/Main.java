@@ -14,6 +14,7 @@ import de.dimm.vsm.client.jna.LibKernel32;
 import de.dimm.vsm.client.jna.PosixWrapper;
 import de.dimm.vsm.client.jna.WinSnapshot;
 import de.dimm.vsm.client.win.WinAgentApi;
+import de.dimm.vsm.dokan.VfsDokanVSMFS;
 import de.dimm.vsm.net.interfaces.AgentApi;
 import de.dimm.vsm.net.interfaces.ServerApi;
 import java.io.BufferedReader;
@@ -41,7 +42,7 @@ public class Main
 {
 
     static String source_str = "trunk";
-    static String version = "1.0.8";
+    static String version = "1.0.10";
     static Main me;
     String work_dir;
     ServerConnector server_conn;
@@ -273,6 +274,7 @@ public class Main
             if (string.equals("-v"))
             {
                 verbose = true;
+                VfsDokanVSMFS.setVerbose(false);
             }
             if (string.equals("-version"))
             {

@@ -319,7 +319,7 @@ public class WinAgentApi extends NetAgentApi
                     byte[] blockData = vfsFile.fetchBlock(pos, bsize);
                     System.arraycopy(blockData, 0, data, 0, bsize);
                 }
-                catch (IOException iOException)
+                catch (Exception iOException)
                 {
                     VSMFSLogger.getLog().error("Error reading vfsFile data: ", iOException);
                     return null;
@@ -359,9 +359,9 @@ public class WinAgentApi extends NetAgentApi
             {
                 return rawReadXA(data, hdata, pos, bsize);
             }
-            catch (IOException iOException)
+            catch (Exception iOException)
             {
-                System.out.println("Error reading data: " + iOException.getMessage());
+                System.out.println("Error reading xadata: " + iOException.getMessage());
                 return null;
             }
         }

@@ -98,8 +98,10 @@ public class AttributeContainerImpl
     public static boolean fill(Path file, AttributeContainer ac )
     {
         ac.setUserName( null );
-        ac.setAcl( null );
         ac.setUserAttributes( null );
+        // acl muss immer != null sein
+        List<VSMAclEntry> acl = new ArrayList<>();
+        ac.setAcl( acl );
 
         AclFileAttributeView view = Files.getFileAttributeView(file, AclFileAttributeView.class);
         if (view != null)
@@ -109,7 +111,7 @@ public class AttributeContainerImpl
                 ac.setUserName( view.getOwner().getName() );
                 List<AclEntry> _acl = view.getAcl();
 
-                List<VSMAclEntry> acl = new ArrayList<VSMAclEntry>();
+                
 
                 for (int i = 0; i < _acl.size(); i++)
                 {
@@ -314,7 +316,7 @@ public class AttributeContainerImpl
                     }
 
                 }
-                else
+                else if (acl != null)
                 {
                     for (int i = 0; i < acl.size(); i++)
                     {
@@ -383,7 +385,7 @@ public class AttributeContainerImpl
                         name = aclEntry.principal().getName();
                         aclMap.put(name, aclEntry);
                     }
-                    realAcls = new ArrayList<AclEntry>( aclMap.values() );
+                    realAcls = new ArrayList<>( aclMap.values() );
                 }
 
 

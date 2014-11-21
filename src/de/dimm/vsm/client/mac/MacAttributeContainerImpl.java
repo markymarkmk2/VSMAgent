@@ -44,7 +44,7 @@ public class MacAttributeContainerImpl
     public static boolean fill(File file, AttributeContainer ac )
     {
         ac.setUserName( null );
-        ac.setAcl( null );
+        ac.setAcl( new ArrayList<VSMAclEntry>() );
         ac.setUserAttributes( null );
 
         int             err;
@@ -152,60 +152,61 @@ public class MacAttributeContainerImpl
                 List<VSMAclEntry> acl =ac.getAcl();
                 List<AclEntry> realAcls = new ArrayList<AclEntry>(view.getAcl());
 
-
-                for (int i = 0; i < acl.size(); i++)
-                {
-                    VSMAclEntry aclEntry = acl.get(i);
-
-
-                    Builder bacl = AclEntry.newBuilder();
-                    bacl.setType(aclEntry.type());
-
-                    bacl.setPermissions(aclEntry.permissions());
-                    if (!aclEntry.flags().isEmpty())
+                if (acl != null) {
+                    for (int i = 0; i < acl.size(); i++)
                     {
-                        bacl.setFlags(aclEntry.flags());
-                    }
+                        VSMAclEntry aclEntry = acl.get(i);
 
 
+                        Builder bacl = AclEntry.newBuilder();
+                        bacl.setType(aclEntry.type());
 
-                    name =aclEntry.principalName();
-                    try
-                    {
-                        UserPrincipal aclOwner = null;
-
-                        // TODO: HASH OR EHCACHE
-                        if (aclEntry.isGroup())
+                        bacl.setPermissions(aclEntry.permissions());
+                        if (!aclEntry.flags().isEmpty())
                         {
-                            aclOwner = usv.lookupPrincipalByGroupName(name);
+                            bacl.setFlags(aclEntry.flags());
                         }
-                        else
+
+
+
+                        name =aclEntry.principalName();
+                        try
                         {
-                            aclOwner = usv.lookupPrincipalByName(name);
+                            UserPrincipal aclOwner = null;
+
+                            // TODO: HASH OR EHCACHE
+                            if (aclEntry.isGroup())
+                            {
+                                aclOwner = usv.lookupPrincipalByGroupName(name);
+                            }
+                            else
+                            {
+                                aclOwner = usv.lookupPrincipalByName(name);
+                            }
+                            bacl.setPrincipal(aclOwner);
                         }
-                        bacl.setPrincipal(aclOwner);
+                        catch(UserPrincipalNotFoundException exc )
+                        {
+                            System.out.println("Skipping unknown user " + ac.getUserName() + " for " + file.toString());
+                            skipWrite = true;
+
+                            // WITHOUT OWNER WE CANNOT SET ACL
+                            continue;
+                        }
+                        catch (IOException iOException)
+                        {
+                            System.out.println("Error setting AclOwner " + ac.getUserName() + " for " + file.toString() + ": " + iOException.getMessage());
+                            skipWrite = true;
+
+                            // WITHOUT OWNER WE CANNOT SET ACL
+                            continue;
+                        }
+
+
+                        AclEntry entry = bacl.build();
+
+                        realAcls.add(entry);
                     }
-                    catch(UserPrincipalNotFoundException exc )
-                    {
-                        System.out.println("Skipping unknown user " + ac.getUserName() + " for " + file.toString());
-                        skipWrite = true;
-
-                        // WITHOUT OWNER WE CANNOT SET ACL
-                        continue;
-                    }
-                    catch (IOException iOException)
-                    {
-                        System.out.println("Error setting AclOwner " + ac.getUserName() + " for " + file.toString() + ": " + iOException.getMessage());
-                        skipWrite = true;
-
-                        // WITHOUT OWNER WE CANNOT SET ACL
-                        continue;
-                    }
-
-
-                    AclEntry entry = bacl.build();
-
-                    realAcls.add(entry);
                 }
 
                 if (!skipWrite)

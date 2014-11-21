@@ -193,7 +193,7 @@ public class MacAgentApi extends NetAgentApi
                 return null;
             }
         }
-        catch (IOException iOException)
+        catch (Exception iOException)
         {
             System.out.println("IOException in read: " + iOException.getMessage());
             return null;

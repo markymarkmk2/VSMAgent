@@ -606,7 +606,9 @@ public abstract class CdpHandler  implements Runnable
                 list.remove(cdpEvent);
                 i--;
 
-                workList.add(cdpEvent);
+                if (!checkExcluded(cdpEvent)) {
+                    workList.add(cdpEvent);
+                }
             }
         }
         
@@ -669,4 +671,27 @@ public abstract class CdpHandler  implements Runnable
         this.exclList = new ArrayList<Excludes>();
         this.exclList.addAll( exclList );
     }
+
+    private boolean checkExcluded( CdpEvent cdpEvent ) {
+        if (exclList == null || exclList.isEmpty())
+        {
+            return false;
+        }
+        boolean ret = false;
+
+        // IF DIR WE ALWAYS HANDLE FULL PATH,
+        for (int i = 0; i < exclList.size(); i++)
+        {
+            Excludes entry = exclList.get(i);
+           
+            if (Excludes.checkExclude(entry, cdpEvent.getElem()))
+            {
+                ret = true;
+                break;
+            }
+        }
+        return ret;
+        
+    }
+ 
 }

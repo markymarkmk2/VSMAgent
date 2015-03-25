@@ -29,7 +29,6 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
-import java.net.UnknownHostException;
 import java.util.concurrent.ThreadPoolExecutor;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
@@ -42,7 +41,7 @@ public class Main
 {
 
     static String source_str = "trunk";
-    static String version = "1.0.10";
+    static String version = "1.1.0";
     static Main me;
     String work_dir;
     ServerConnector server_conn;

@@ -5,6 +5,7 @@
 
 package de.dimm.vsm.client.cdp.fce;
 
+import de.dimm.vsm.VSMFSLogger;
 import de.dimm.vsm.client.Main;
 import de.dimm.vsm.client.cdp.CDP_Param;
 import de.dimm.vsm.net.CdpEvent;
@@ -37,11 +38,11 @@ public class VSMCDPEventProcessor implements CDPEventProcessor
             RemoteFSElem elem = ev.getElem();
             if (elem.getPath() == null || elem.getPath().isEmpty())
             {
-                System.out.println("Skipping event " + ev.toString());
+                VSMFSLogger.getLog().debug("Skipping event " + ev.toString());
                 return true;
             }
 
-            System.out.println("Processing <" + elem.getPath() + ">");
+            VSMFSLogger.getLog().debug("Processing <" + elem.getPath() + ">");
             ServerApi api = Main.getServerConn().getServerApi(cdp_param.getServer(), cdp_param.getPort(), cdp_param.isSsl(), cdp_param.isTcp());
 
             // AND SEND CALL
@@ -50,8 +51,8 @@ public class VSMCDPEventProcessor implements CDPEventProcessor
         }
         catch (Exception e)
         {
-            System.out.println("Error processing " + ev.toString() + ": " + e.getMessage());
-            e.printStackTrace();
+            VSMFSLogger.getLog().error("Error processing " + ev.toString(), e);
+            
         }
         return false;
     }
@@ -70,13 +71,13 @@ public class VSMCDPEventProcessor implements CDPEventProcessor
                 RemoteFSElem elem = ev.getElem();
                 if (elem.getPath() == null || elem.getPath().isEmpty())
                 {
-                    System.out.println("Skipping event " + ev.toString());
+                    VSMFSLogger.getLog().debug("Skipping event " + ev.toString());
                     evList.remove(ev);
                     i--;
                     continue;
                 }
 
-                System.out.println("Processing <" + elem.getPath() + ">");
+                VSMFSLogger.getLog().debug("Sending CDP Event " + ev.toString() );
             }
             if (!evList.isEmpty())
             {
@@ -91,8 +92,7 @@ public class VSMCDPEventProcessor implements CDPEventProcessor
         }
         catch (Exception e)
         {
-            System.out.println("Error processing " + ev + ": " + e.getMessage());
-            e.printStackTrace();
+            VSMFSLogger.getLog().error("Error processing " + (ev != null?ev.toString():null), e);
         }
         return false;
     }

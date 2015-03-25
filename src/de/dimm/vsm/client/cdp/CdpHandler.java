@@ -5,6 +5,8 @@
 
 package de.dimm.vsm.client.cdp;
 
+import de.dimm.vsm.VSMFSLogger;
+import de.dimm.vsm.client.Main;
 import de.dimm.vsm.client.NetAgentApi;
 import de.dimm.vsm.client.RemoteFSElemFactory;
 import de.dimm.vsm.client.cdp.fce.FCEEventBuffer;
@@ -118,11 +120,13 @@ public abstract class CdpHandler  implements Runnable
 
     public void cdp_log( String string )
     {
-        System.out.println(string);
+        VSMFSLogger.getLog().error(string);        
     }
     public void cdp_dbg( String string )
     {
-        System.out.println(string);
+        if (Main.isVerbose()) {
+            VSMFSLogger.getLog().debug(string);
+        }
     }
     public abstract boolean init_cdp();
    
@@ -644,7 +648,7 @@ public abstract class CdpHandler  implements Runnable
                 {
                     synchronized( fce_event_list )
                     {
-                        System.out.println("FCE-Event Queue Overrun!");
+                        VSMFSLogger.getLog().error("FCE-Event Queue Overrun!");
 
                         fce_event_list.clear();
                         event = new FceEvent( event.client, (byte)0, (byte)FceEvent.FCE_OVERFLOW, (byte)0, (byte[])null);
@@ -656,7 +660,7 @@ public abstract class CdpHandler  implements Runnable
             }
             catch (Exception ue)
             {
-                System.out.println("Exception in FCE-Event Queue:" + ue.getMessage());
+                VSMFSLogger.getLog().error("Exception in FCE-Event Queue:", ue);
             }
         }        
     }

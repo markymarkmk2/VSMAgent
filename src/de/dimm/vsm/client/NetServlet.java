@@ -139,7 +139,9 @@ public class NetServlet extends HessianServlet implements AgentApi
     @Override
     public byte[] read( RemoteFSElemWrapper file, long pos, int bsize ) throws IOException
     {
-        VSMFSLogger.getLog().debug("read " + pos + "/" + bsize + " für " + file.getHandle());
+        if (Main.isVerbose()) {
+                VSMFSLogger.getLog().debug("read " + pos + "/" + bsize + " für " + file.getHandle());
+        }
         return api.read(file, pos, bsize);
     }
     @Override

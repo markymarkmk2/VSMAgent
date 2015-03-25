@@ -39,6 +39,7 @@ public class WinCdpHandler extends CdpHandler implements FCEEventSource
 {
     Thread idle_thr;
 
+    private static final int FILE_INFO_SIZE = 4096*8;
     // WIN_API:
     public static final int FILE_ACTION_ADDED = 0x0001;
     public static final int FILE_ACTION_REMOVED = 0x00000002;
@@ -51,9 +52,9 @@ public class WinCdpHandler extends CdpHandler implements FCEEventSource
     WString lpszDirName;
     int filter;
     //Memory mem;
-    IntByReference readLength;
-    WinNT.FILE_NOTIFY_INFORMATION info;
+    IntByReference readLength;   
     WinBase.OVERLAPPED overlapped;
+    int  infoIdx = 0;
 
     public WinCdpHandler( NetAgentApi agentApi, CDP_Param cdp, CDPEventProcessor eventProcessor)
     {
@@ -61,6 +62,8 @@ public class WinCdpHandler extends CdpHandler implements FCEEventSource
        
         this.eventSource = this;
     }
+    
+    
 
 
     @Override
@@ -116,23 +119,8 @@ public class WinCdpHandler extends CdpHandler implements FCEEventSource
 
         
         readLength = new IntByReference(0);
-        info = new FILE_NOTIFY_INFORMATION(4096);
+        
         overlapped = new OVERLAPPED();
-
-        boolean ret = Kernel32.INSTANCE.ReadDirectoryChangesW(hDir, // HANDLE TO DIRECTORY
-                info, // Formatted buffer into which read results are returned.  This is a
-                info.size(), // Length of previous parameter, in bytes
-                true, // Monitor sub trees?
-                filter, // What we are watching for
-                readLength, // Number of bytes returned into second parameter
-                overlapped, // OVERLAPPED structure that supplies data to be used during an asynchronous operation.  If this is NULL, ReadDirectoryChangesW does not return immediately.
-                null);                           // Completion routine
-
-        if (!ret)
-        {
-            cdp_param.set_error( "Unable to open ReadDirectoryChangesW");
-            return false;
-        }
 
         try
         {
@@ -144,12 +132,29 @@ public class WinCdpHandler extends CdpHandler implements FCEEventSource
             return false;
         }
         
-        return ret;
+        return true;
     }
 
     @Override
     public void start_cdp() throws SocketException
     {
+        if (idle_thr != null && idle_thr.isAlive()) {
+            // Mist, wir haben einen nicht gestoppten Thread
+            cdp_log("Aborting old thread" );
+            abort = true;
+            int n = 10;
+            while (idle_thr.isAlive() && n > 0) {
+                try {
+                    Thread.sleep(1000);
+                }
+                catch (InterruptedException interruptedException) {
+                }
+                n--;
+            }
+            if (n <= 0)
+                cdp_log("Aborting old thread failed!!!!" );
+            abort = false;
+        }
          // Create a thread to sit on the directory changes
         idle_thr = new Thread(new Runnable()
         {
@@ -164,9 +169,7 @@ public class WinCdpHandler extends CdpHandler implements FCEEventSource
 
         super.start_cdp();
     }
-
-    
-
+   
 
 
     void change_callback()
@@ -175,89 +178,52 @@ public class WinCdpHandler extends CdpHandler implements FCEEventSource
         PointerByReference commandState = new PointerByReference();        
 
         PointerByReference overlapdata = new PointerByReference();
-        WinPlatformData wpd = (WinPlatformData)cdp_param.getPlatformData();
+        //WinPlatformData wpd = (WinPlatformData)cdp_param.getPlatformData();
 
         int eventId = 0;
-
+        
+        FILE_NOTIFY_INFORMATION info = new FILE_NOTIFY_INFORMATION(FILE_INFO_SIZE);
+        boolean ret = Kernel32.INSTANCE.ReadDirectoryChangesW(hDir, // HANDLE TO DIRECTORY
+                info, // Formatted buffer into which read results are returned.  This is a
+                info.size(), // Length of previous parameter, in bytes
+                true, // Monitor sub trees?
+                filter, // What we are watching for
+                readLength, // Number of bytes returned into second parameter
+                overlapped, // OVERLAPPED structure that supplies data to be used during an asynchronous operation.  If this is NULL, ReadDirectoryChangesW does not return immediately.
+                null);                           // Completion routine
+        
+        if (!ret)
+        {
+            cdp_param.set_error( "Unable to open ReadDirectoryChangesW");
+            return;
+        }
+        
         do
         {
             // Retrieve the directory info for this directory
             // through the completion key
-            boolean ook = Kernel32.INSTANCE.GetQueuedCompletionStatus(hCompPort,
+            boolean ook = false;
+            while (!ook && !abort){
+                ook = Kernel32.INSTANCE.GetQueuedCompletionStatus(hCompPort,
                     numBytes,
                     commandState, // This is the structure that was passed in the call to CreateIoCompletionPort below.
                     overlapdata,
-                    -1 /* infinite*/);
+                    1000 /* infinite*/);
+            }
 
-
-            if (abort || cdp_param.wants_finish())
+            if (abort || cdp_param.wants_finish()) {
                 break;
-
+            }
+            
             eventId++;
+            cdp_dbg("CDP GCQS   : EV:" + eventId + " NB:" + numBytes.getValue() + " OOK:" + ook );
 
             
-            do
-            {
-                String object_name = info.getFilename();
-                int action = info.Action;
-                
-
-                String fullpath = cdp_param.getPath().getPath();
-
-                if (!object_name.isEmpty())
-                {
-                    if (fullpath.endsWith("\\"))
-                        fullpath += object_name;
-                    else
-                        fullpath += "\\" + object_name;
-                
-
-                    // BUILD REMOTEFSELEM FOR THIS ENTRY
-                    RemoteFSElem elem = null;
-                    File f = new File(fullpath);
-                    if (f.exists())
-                    {
-                        elem = factory.create_elem(f, true);
-                    }
-                    else
-                    {
-                        // ALREADY DELETED? THEN JUST A PLACEHOLDER WITHOUT STATS
-                        elem = new RemoteFSElem(fullpath, FileSystemElemNode.FT_FILE, 0, 0, 0, 0, 0);
-                    }
-
-
-                    try
-                    {
-                        // CHECK PATH
-                        if (!check_invalid_cdp_path(elem, object_name))
-                        {
-                            cdp_log("CDP new    :" + object_name + " fni:" + action);
-
-                            byte mode = getFceModeFromWinAPI( f, info );
-                            queue.add( new FceEvent(null, (byte)0xff, mode, eventId, fullpath.getBytes()));
-                            //handle_change(elem, object_name, action);
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        cdp_log("Ouch: " + e.getMessage());
-                        e.printStackTrace(System.err);
-                    }
-                }
-                try
-                {
-                    info = info.next();
-                }
-                catch (Exception e)
-                {
-                    cdp_log("Ouch: " + e.getMessage());
-                }
-
-            }
-            while (info != null);
+            // Save Struct
+            FILE_NOTIFY_INFORMATION savedInfo = info;         
 
             // Reissue the watch command
-            info = new FILE_NOTIFY_INFORMATION(4096);
+            info = new FILE_NOTIFY_INFORMATION(FILE_INFO_SIZE);     
             boolean ok = Kernel32.INSTANCE.ReadDirectoryChangesW(hDir, info,
                     info.size(),
                     true,
@@ -265,10 +231,83 @@ public class WinCdpHandler extends CdpHandler implements FCEEventSource
                     readLength,
                     overlapped,
                     null);
-
-            // IF WE GET A ZERO PACKAGE, WARE DONE
+            
+            if (!ok) {
+                cdp_log("CDP ERR!   : NB:" + numBytes.getValue() + " OK:" + ok );
+            }
+            
+            
+            handleInfoStructure( eventId, savedInfo );            
         }
         while (!abort);
+    }
+    
+    void handleInfoStructure( int eventId, FILE_NOTIFY_INFORMATION info ) 
+    {
+        do
+        {                
+            String object_name = info.getFilename();
+            int action = info.Action;
+
+            cdp_dbg("CDP evt    : EV:" + eventId + " AC:" + info.Action + " FL:" +info.FileNameLength + " NI:" + info.NextEntryOffset);
+
+            String fullpath = cdp_param.getPath().getPath();
+
+            if (!object_name.isEmpty())
+            {
+                if (fullpath.endsWith("\\"))
+                    fullpath += object_name;
+                else
+                    fullpath += "\\" + object_name;
+
+
+                // BUILD REMOTEFSELEM FOR THIS ENTRY
+                RemoteFSElem elem;
+                File f = new File(fullpath);
+                if (f.exists())
+                {
+                    elem = factory.create_elem(f, true);
+                }
+                else
+                {
+                    // ALREADY DELETED? THEN JUST A PLACEHOLDER WITHOUT STATS
+                    elem = new RemoteFSElem(fullpath, FileSystemElemNode.FT_FILE, 0, 0, 0, 0, 0);
+                }
+
+                try
+                {
+                    // CHECK PATH
+                    if (!check_invalid_cdp_path(elem, object_name))
+                    {
+                        cdp_dbg("CDP new    : " + object_name + " fni:" + action);
+
+                        byte mode = getFceModeFromWinAPI( f, info );
+                        queue.add( new FceEvent(null, (byte)0xff, mode, eventId, fullpath.getBytes()));
+                        //handle_change(elem, object_name, action);
+                    }
+                    else {
+                        cdp_dbg("CDP skip    : " + object_name + " fni:" + action);
+                    }
+                }
+                catch (Exception e)
+                {
+                    cdp_log("Ouch: " + e.getMessage());
+                    e.printStackTrace(System.err);
+                }
+            }
+            else {
+                
+            }
+            try
+            {
+                info = info.next();
+            }
+            catch (Exception e)
+            {
+                cdp_log("Ouch: " + e.getMessage());
+            }
+        }
+        while (info != null);   
     }
 
 
@@ -321,6 +360,8 @@ public class WinCdpHandler extends CdpHandler implements FCEEventSource
     @Override
     public void cleanup_cdp()
     {
+        Kernel32.INSTANCE.CloseHandle(hCompPort);
+        Kernel32.INSTANCE.CloseHandle(hDir);
 
     }
 
@@ -339,6 +380,14 @@ public class WinCdpHandler extends CdpHandler implements FCEEventSource
         }
         return null;
     }
+
+    @Override
+    public void stop_cdp() {
+        abort = true;
+        super.stop_cdp(); //To change body of generated methods, choose Tools | Templates.
+    }
+    
+    
 
     @Override
     public void close(CdpTicket ticket)

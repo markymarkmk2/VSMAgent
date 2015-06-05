@@ -6,6 +6,7 @@
 package de.dimm.vsm.client.cdp.fce;
 
 import com.thoughtworks.xstream.XStream;
+import de.dimm.vsm.VSMFSLogger;
 import de.dimm.vsm.client.Main;
 import de.dimm.vsm.client.cdp.CDP_Param;
 import de.dimm.vsm.log.LogManager;
@@ -91,7 +92,8 @@ public class FCEEventBuffer
                 }
             }
 
-            List<CdpEvent> workList = new ArrayList<CdpEvent>();
+            List<CdpEvent> workList = new ArrayList<>();
+            VSMFSLogger.getLog().debug("Clearing CdpEvent Buffer with " + workList.size() + " events");            
 
             for (int i = 0; i < list.size(); i++)
             {
@@ -128,8 +130,10 @@ public class FCEEventBuffer
                 }
             }
             // DONE W/O ERRORS, THEN DELETE BUFFER
-            if (ret)
+            if (ret) {                
+                VSMFSLogger.getLog().debug("CdpEvent Buffer was cleared successful");      
                 fh.delete();
+            }
 
             return ret;
         }

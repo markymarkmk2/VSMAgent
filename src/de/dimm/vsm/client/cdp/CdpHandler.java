@@ -13,7 +13,6 @@ import de.dimm.vsm.client.cdp.fce.FCEEventBuffer;
 import de.dimm.vsm.client.jna.PosixWrapper;
 import de.dimm.vsm.client.win.WinRemoteFSElemFactory;
 import de.dimm.vsm.net.CdpEvent;
-import de.dimm.vsm.net.ExclListEntry;
 import de.dimm.vsm.net.RemoteFSElem;
 import de.dimm.vsm.net.interfaces.CDPEventProcessor;
 import de.dimm.vsm.records.Excludes;
@@ -154,9 +153,9 @@ public abstract class CdpHandler  implements Runnable
         this.eventProcessor = eventProcessor;
         this.eventSource = eventSource;
 
-        fce_event_list = new ArrayBlockingQueue<FceEvent>(MAX_FCE_EVENTS, /*fair*/true);
-        cdp_work_list = new LinkedList<CdpEvent>();
-        fce_copy_list = new LinkedList<FceEvent>();
+        fce_event_list = new ArrayBlockingQueue<>(MAX_FCE_EVENTS, /*fair*/true);
+        cdp_work_list = new LinkedList<>();
+        fce_copy_list = new LinkedList<>();
 
         eventBuffer = new FCEEventBuffer(cdp_param, eventProcessor);
 
@@ -243,7 +242,7 @@ public abstract class CdpHandler  implements Runnable
 
                     try
                     {
-                        FceEvent ev = null;
+                        FceEvent ev;
                         // THIS IS THE CONSUMER OF PENDING FCE-EVENTS
                         ev = fce_event_list.poll(FCE_POLL_MS, TimeUnit.MILLISECONDS);
                         if (ev != null)
@@ -287,7 +286,7 @@ public abstract class CdpHandler  implements Runnable
                     }
                     catch (Exception exc)
                     {
-                        exc.printStackTrace();
+                        VSMFSLogger.getLog().error("Error in CDP-RunLoop", exc); 
                     }
                 }
                 finished = true;
@@ -332,7 +331,7 @@ public abstract class CdpHandler  implements Runnable
             }
             catch (Exception e)
             {
-                cdp_log("Cannot coalesce event " + ev.toString() + ": " + e.toString());e.printStackTrace();
+                VSMFSLogger.getLog().error("Cannot coalesce event " + ev.toString() + ": " + e.toString(), e);
             }
         }
     }
@@ -340,7 +339,7 @@ public abstract class CdpHandler  implements Runnable
 
     RemoteFSElem fromPath( String path, boolean isDir )
     {
-        RemoteFSElem elem = null;
+        RemoteFSElem elem;
         File f = new File( path );
         if (f.exists())
         {
@@ -591,7 +590,7 @@ public abstract class CdpHandler  implements Runnable
     void workEvents(List<CdpEvent> list )
     {
         long now = System.currentTimeMillis();
-        List<CdpEvent> workList = new ArrayList<CdpEvent>();
+        List<CdpEvent> workList = new ArrayList<>();
 
         for (int i = 0; i < list.size(); i++)
         {
@@ -620,7 +619,7 @@ public abstract class CdpHandler  implements Runnable
         {
             if (!eventProcessor.processList( workList ))
             {
-                cdp_log("Lost cdp file_change, cannot send to Server");
+                cdp_log("Unable to send cdp file_change to Server, buffering " + workList.size() + " events");
                 for (int i = 0; i < workList.size(); i++)
                 {
                     CdpEvent cdpEvent = workList.get(i);
@@ -672,7 +671,7 @@ public abstract class CdpHandler  implements Runnable
 
     public void setExcludes( List<Excludes> exclList )
     {
-        this.exclList = new ArrayList<Excludes>();
+        this.exclList = new ArrayList<>();
         this.exclList.addAll( exclList );
     }
 

@@ -41,7 +41,7 @@ public class Main
 {
 
     static String source_str = "trunk";
-    static String version = "1.1.0";
+    static String version = "1.1.1";
     static Main me;
     String work_dir;
     ServerConnector server_conn;

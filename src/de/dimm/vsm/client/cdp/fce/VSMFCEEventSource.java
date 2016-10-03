@@ -22,6 +22,73 @@ import java.util.HashMap;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
+
+
+/*
+ * Aus fce_api.h, netatalk-Code
+ * 
+ * Network payload of an FCE packet, version 1
+ *
+ *      1         2         3         4         5         6         7          8
+ * +---------+---------+---------+---------+---------+---------+----------+----------+
+ * |                                   FCE magic                                     |
+ * +---------+---------+---------+---------+---------+---------+----------+----------+
+ * | version |
+ * +---------+
+ * |  event  |
+ * +---------+-----------------------------+
+ * |               event ID                |
+ * +-------------------+-------------------+ . . . .
+ * |     pathlen       | path
+ * +-------------------+------ . . . . . . . . . . .
+ *
+ *
+ * Network payload of an FCE packet, version 2
+ *
+ *      1         2         3         4         5         6         7          8
+ * +---------+---------+---------+---------+---------+---------+----------+----------+
+ * |                                   FCE magic                                     |
+ * +---------+---------+---------+---------+---------+---------+----------+----------+
+ * | version |
+ * +---------+
+ * | options |
+ * +---------+
+ * |  event  |
+ * +---------+
+ * | padding |
+ * +---------+---------+---------+---------+---------+---------+----------+----------+
+ * |                                    reserved                                     |
+ * +---------+---------+---------+---------+---------+---------+----------+----------+
+ * |               event ID                |
+ * +---------+---------+---------+---------+
+ * ... optional:
+ * +---------+---------+---------+---------+---------+---------+----------+----------+
+ * |                                      pid                                        |
+ * +---------+---------+---------+---------+---------+---------+----------+----------+
+ * ...
+ * ... optional:
+ * +-------------------+----------  . . . .
+ * |  username length  | username
+ * +-------------------+----------  . . . .
+ * ...
+ * +-------------------+------  . . . . . .
+ * |     pathlen       | path
+ * +-------------------+------  . . . . . .
+ * ... optional:
+ * +-------------------+------------- . . .
+ * |     pathlen       | source path
+ * +-------------------+------------- . . .
+ *
+ * version      = 2
+ * options      = bitfield:
+ *                    0: pid present
+ *                    1: username present
+ *                    2: source path present
+ * pid          = optional pid
+ * username     = optional username
+ * source path  = optional source path
+ */
+
 class FCEPort
 {
     CDP_Param param;
@@ -30,7 +97,7 @@ class FCEPort
     public FCEPort( CDP_Param param)
     {
         this.param = param;
-        this.fce_queue = new ArrayBlockingQueue<FceEvent>(50);
+        this.fce_queue = new ArrayBlockingQueue<>(50);
     }
 
 
@@ -86,9 +153,17 @@ class FCEPort
     }
 }
 
+
 class NetatalkUDPEventSource
 {
-    byte[] buffer = new byte[FCECdpHandler.FCE_PACKET_HEADER_SIZE + 1024];
+    private static final int AT_FCE_VERSION_1 = 1;
+    private static final int AT_FCE_VERSION_2 = 2;
+    
+    private static final int OPT_PID_PRESENT = 1;
+    private static final int OPT_USERNAMER_PRESENT = 2;
+    private static final int OPT_SRC_PATH_PRESENT = 4;
+    
+    byte[] buffer = new byte[FCECdpHandler.FCE_PACKET_HEADER_SIZE + 4096];
     String ipFilter;
     DatagramSocket socket;
     int port;
@@ -101,7 +176,7 @@ class NetatalkUDPEventSource
     {
          this.port = port;
          this.ipFilter = ipFilter;
-         fce_queue_map = new HashMap<CdpTicket, FCEPort>();
+         fce_queue_map = new HashMap<>();
     }
 
     
@@ -247,30 +322,9 @@ class NetatalkUDPEventSource
                     }
                 }
             }
-
-            byte version = buffer[8];
-            byte mode = buffer[9];
-
-
-            ByteBuffer bb = ByteBuffer.wrap(buffer);
-            bb.order(ByteOrder.BIG_ENDIAN);
-
-            int event_id = bb.getInt(10);
-            int path_len = bb.getChar(14);
-
-
-            if (path_len < 0 || path_len > 1024)
-                skip = true;
-
-            if (skip)
-                return null;
-
-            byte[] event_data = new byte[path_len];
-            System.arraycopy(buffer, 16, event_data, 0, path_len);
-
-            FceEvent event = new FceEvent( client, version, mode, event_id, event_data);
-
-            return event;
+            if (!skip) {
+                return renderEvent(client, buffer);
+            }
         }
         catch (Exception ue)
         {
@@ -278,8 +332,89 @@ class NetatalkUDPEventSource
         }
         return null;
     }
-}
 
+    private FceEvent renderAtEventV1( byte[] buffer, InetAddress client, byte version ) {
+        boolean skip = false;
+        
+        byte mode = buffer[9];
+
+        ByteBuffer bb = ByteBuffer.wrap(buffer);
+        bb.order(ByteOrder.BIG_ENDIAN);
+
+        int event_id = bb.getInt(10);
+        int path_len = bb.getChar(14);
+
+
+        if (path_len < 0 || path_len > 1024)
+            skip = true;
+
+        if (skip)
+            return null;
+
+        byte[] event_data = new byte[path_len];
+        System.arraycopy(buffer, 16, event_data, 0, path_len);
+
+        FceEvent event = new FceEvent( client, version, mode, event_id, event_data);
+
+        return event;
+    }
+
+    private FceEvent renderAtEventV2( byte[] buffer, InetAddress client, byte version ) {
+        boolean skip = false;
+        ByteBuffer bb = ByteBuffer.wrap(buffer);
+        bb.order(ByteOrder.BIG_ENDIAN);
+        
+        byte options = buffer[9];
+        byte mode = buffer[10]; // event in fce_api
+        // Byte 11 ist gap / reserved
+        int event_id = bb.getInt(12);
+        int aktPos = 16;
+        if ((options & OPT_PID_PRESENT) != 0) {
+            //long pid = bb.getLong(aktPos);
+            
+        }
+        aktPos += 8;
+        
+        // GetChar weil vorzeichenlos
+        if ((options & OPT_USERNAMER_PRESENT) != 0) {
+            int uNameLen = bb.getChar(aktPos);
+            aktPos += 2;
+            
+//            byte[] uName = new byte[uNameLen];
+//            System.arraycopy(buffer, aktPos + 2, uName, 0, uNameLen); // bb.get(uName, aktPos + 2, uNameLen);
+            aktPos += uNameLen;
+        }
+        
+        
+        int path_len = bb.getChar(aktPos);
+        aktPos += 2;
+
+        // Plausibilität 2 Byte
+        if (path_len < 0 || path_len > 32678)
+            skip = true;
+
+        if (skip)
+            return null;
+
+        byte[] event_data = new byte[path_len];
+        System.arraycopy(buffer, aktPos, event_data, 0, path_len);
+
+        FceEvent event = new FceEvent( client, version, mode, event_id, event_data);
+
+        return event;
+    }
+
+    public FceEvent renderEvent(InetAddress client, byte[] buffer) {
+        byte version = buffer[8];
+        if (version == AT_FCE_VERSION_1 ) {
+            return renderAtEventV1( buffer, client, version);
+        }
+        else if (version == AT_FCE_VERSION_2 ) {
+            return renderAtEventV2( buffer, client, version);
+        }
+        return null;
+    }
+}
 /**
  *
  * @author Administrator

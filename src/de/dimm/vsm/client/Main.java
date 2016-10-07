@@ -8,7 +8,6 @@ import com.caucho.hessian.server.HessianSkeleton;
 import de.dimm.vsm.Utilities.CommThread;
 import de.dimm.vsm.Utilities.SizeStr;
 import de.dimm.vsm.Utilities.ThreadPoolWatcher;
-
 import de.dimm.vsm.VSMFSLogger;
 import de.dimm.vsm.client.jna.LibKernel32;
 import de.dimm.vsm.client.jna.PosixWrapper;
@@ -41,7 +40,7 @@ public class Main
 {
 
     static String source_str = "trunk";
-    static String version = "1.1.2";
+    static String version = "1.1.3";
     static Main me;
     String work_dir;
     ServerConnector server_conn;

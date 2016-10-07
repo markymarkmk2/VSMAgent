@@ -8,9 +8,9 @@ package de.dimm.vsm.client.unix;
 import de.dimm.vsm.client.FSElemAccessor;
 import de.dimm.vsm.client.FileHandleData;
 import de.dimm.vsm.client.jna.PosixWrapper;
-import de.dimm.vsm.net.interfaces.AgentApi;
 import de.dimm.vsm.net.RemoteFSElem;
 import de.dimm.vsm.net.RemoteFSElemWrapper;
+import de.dimm.vsm.net.interfaces.AgentApi;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -22,7 +22,7 @@ import org.jruby.ext.posix.POSIX;
 
 class UnixFileHandleData extends FileHandleData
 {
-    RandomAccessFile handle;
+    private final RandomAccessFile handle;
 
     public UnixFileHandleData( RemoteFSElem elem, RandomAccessFile handle )
     {
@@ -44,6 +44,11 @@ class UnixFileHandleData extends FileHandleData
         }
         return true;
     }
+
+    public RandomAccessFile getHandle() {
+        return handle;
+    }
+
 }
 /**
  *
@@ -52,7 +57,7 @@ class UnixFileHandleData extends FileHandleData
 public class UnixFSElemAccessor extends FSElemAccessor
 {
     
-    static long newHandleValue = 1;
+    static private long newHandleValue = 1;
     
 
    
@@ -64,7 +69,7 @@ public class UnixFSElemAccessor extends FSElemAccessor
     @Override
     public boolean exists( RemoteFSElem path )
     {
-        String npath = api.getFsFactory().convSystem2NativePath(path.getPath());
+        String npath = getApi().getFsFactory().convSystem2NativePath(path.getPath());
         return new File(npath).exists();
     }
     
@@ -72,7 +77,7 @@ public class UnixFSElemAccessor extends FSElemAccessor
     @Override
     public RemoteFSElemWrapper open_handle( RemoteFSElem elem, int flags )
     {        
-        String npath = api.getFsFactory().convSystem2NativePath(elem.getPath());
+        String npath = getApi().getFsFactory().convSystem2NativePath(elem.getPath());
 
         RandomAccessFile fh = null;
         FileLock lock = null;
@@ -133,7 +138,7 @@ public class UnixFSElemAccessor extends FSElemAccessor
         RandomAccessFile fh = null;
         FileLock lock = null;
         
-        String npath = api.getFsFactory().convSystem2NativePath(elem.getPath());
+        String npath = getApi().getFsFactory().convSystem2NativePath(elem.getPath());
         String path = getXAPath( npath );
         try
         {
@@ -219,7 +224,7 @@ public class UnixFSElemAccessor extends FSElemAccessor
         if (data == null)
             return null;
 
-        return data.handle;
+        return data.getHandle();
     }
     @Override
     public FileHandleData get_handleData( RemoteFSElemWrapper wrapper)
@@ -240,7 +245,7 @@ public class UnixFSElemAccessor extends FSElemAccessor
         mtimes[0] = dir.getMtimeMs() / 1000;
         mtimes[1] = (dir.getMtimeMs() % 1000) * 1000;
 
-        path = api.getFsFactory().convSystem2NativePath(path);
+        path = getApi().getFsFactory().convSystem2NativePath(path);
 
         PosixWrapper.getPosix().utimes(path, atimes, mtimes );
     }
@@ -248,8 +253,8 @@ public class UnixFSElemAccessor extends FSElemAccessor
     @Override
     public boolean createSymlink( String path, String linkPath )
     {
-        path = api.getFsFactory().convSystem2NativePath(path);
-        linkPath = api.getFsFactory().convSystem2NativePath(linkPath);
+        path = getApi().getFsFactory().convSystem2NativePath(path);
+        linkPath = getApi().getFsFactory().convSystem2NativePath(linkPath);
 
         POSIX posix = PosixWrapper.getPosix();
         try
@@ -268,7 +273,7 @@ public class UnixFSElemAccessor extends FSElemAccessor
 
     private String getXAPath( String path )
     {
-         return api.getFsFactory().getXAPath(path);
+        return getApi().getFsFactory().getXAPath(path);
     }
    
 }

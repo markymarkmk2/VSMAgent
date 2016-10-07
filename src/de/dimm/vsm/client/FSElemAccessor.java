@@ -27,12 +27,17 @@ public abstract class FSElemAccessor
     final private HashMap<Long, MultiThreadedFileReader> mtfrMap;
     final protected HashMap<Long,FileHandleData> hash_map;
 
-    protected NetAgentApi api;
+    final private NetAgentApi api;
+
+    public NetAgentApi getApi() {
+        return api;
+    }
+
     public FSElemAccessor( NetAgentApi api )
     {
         this.api = api;
-        mtfrMap = new HashMap<Long, MultiThreadedFileReader>();
-        mtfrBufferList = new ArrayList<MultiThreadedFileReader>();
+        mtfrMap = new HashMap<>();
+        mtfrBufferList = new ArrayList<>();
 
         for (int i = 0; i < MAX_FILE_READERS; i++)
         {
@@ -41,25 +46,24 @@ public abstract class FSElemAccessor
         hash_map = new HashMap<Long, FileHandleData>();
     }
 
-    boolean loggedEmpty = false;
+    private boolean loggedEmpty = false;
     public MultiThreadedFileReader createMultiThreadedFileReader( NetAgentApi api, RemoteFSElemWrapper wrapper ) throws IOException
     {
-        if (mtfrBufferList.isEmpty())
-        {
-            if (!loggedEmpty)
-            {
-                System.out.println("MultiThreadedFileHandles are empty, Map size is " + mtfrMap.size());
-                loggedEmpty = true;
+        synchronized (mtfrBufferList) {
+            if (mtfrBufferList.isEmpty()) {
+                if (!loggedEmpty) {
+                    System.out.println("MultiThreadedFileHandles are empty, Map size is " + mtfrMap.size());
+                    loggedEmpty = true;
+                }
+                return null;
             }
-            return null;
+
+            MultiThreadedFileReader mtfr = mtfrBufferList.remove(0);
+            mtfr.initQueues();
+            mtfrMap.put(wrapper.getHandle(), mtfr);
+
+            return mtfr;
         }
-
-        MultiThreadedFileReader mtfr = mtfrBufferList.remove(0);
-
-        mtfr.initQueues();
-        mtfrMap.put(wrapper.getHandle(), mtfr);
-        
-        return mtfr;
     }
 
     public MultiThreadedFileReader getMultiThreadedFileReader( RemoteFSElemWrapper wrapper )
@@ -73,28 +77,28 @@ public abstract class FSElemAccessor
 
     public boolean close_handle( RemoteFSElemWrapper wrapper ) throws IOException
     {
-        MultiThreadedFileReader mtfr = mtfrMap.remove(wrapper.getHandle());
-        if (mtfr != null)
-        {
-            mtfrBufferList.add(0, mtfr);
+        synchronized (mtfrBufferList) {
+            MultiThreadedFileReader mtfr = mtfrMap.remove(wrapper.getHandle());
+            if (mtfr != null) {
+                mtfrBufferList.add(0, mtfr);
+            }
+            return true;
         }
-        return true;
     }
 
     public void resetFileReaders()
     {
-        Collection<MultiThreadedFileReader> coll = mtfrMap.values();
-        if (!coll.isEmpty())
-        {
-            mtfrMap.clear();
-            mtfrBufferList.addAll(coll);
+        synchronized (mtfrBufferList) {
+            Collection<MultiThreadedFileReader> coll = mtfrMap.values();
+            if (!coll.isEmpty()) {
+                mtfrMap.clear();
+                mtfrBufferList.addAll(coll);
+            }
+            for (int i = 0; i < mtfrBufferList.size(); i++) {
+                MultiThreadedFileReader multiThreadedFileReader = mtfrBufferList.get(i);
+                multiThreadedFileReader.resetQueues();
+            }
         }
-        for (int i = 0; i < mtfrBufferList.size(); i++)
-        {
-            MultiThreadedFileReader multiThreadedFileReader = mtfrBufferList.get(i);
-            multiThreadedFileReader.resetQueues();
-        }
-
     }
 
 
@@ -106,13 +110,13 @@ public abstract class FSElemAccessor
             multiThreadedFileReader.shutdown();
         }
         mtfrMap.clear();
-
-        for (int i = 0; i < mtfrBufferList.size(); i++)
-        {
-            MultiThreadedFileReader multiThreadedFileReader = mtfrBufferList.get(i);
-            multiThreadedFileReader.shutdown();
+        synchronized (mtfrBufferList) {
+            for (int i = 0; i < mtfrBufferList.size(); i++) {
+                MultiThreadedFileReader multiThreadedFileReader = mtfrBufferList.get(i);
+                multiThreadedFileReader.shutdown();
+            }
+            mtfrBufferList.clear();
         }
-        mtfrBufferList.clear();
     }
 
     static protected boolean test_flag( int flags, int flag)
@@ -142,7 +146,7 @@ public abstract class FSElemAccessor
             return new String[0];
         }
 
-        ArrayList<String> l = new ArrayList<String>();
+        ArrayList<String> l = new ArrayList<>();
 
         int start = 0;
         int end = 0;
@@ -173,6 +177,4 @@ public abstract class FSElemAccessor
     }
 
     public abstract boolean exists( RemoteFSElem path );
-
-   
 }

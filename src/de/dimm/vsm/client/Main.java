@@ -4,6 +4,10 @@
  */
 package de.dimm.vsm.client;
 
+import com.caucho.hessian.io.Deserializer;
+import com.caucho.hessian.io.HessianProtocolException;
+import com.caucho.hessian.io.Serializer;
+import com.caucho.hessian.io.SerializerFactory;
 import com.caucho.hessian.server.HessianSkeleton;
 import de.dimm.vsm.Utilities.CommThread;
 import de.dimm.vsm.Utilities.SizeStr;
@@ -14,6 +18,8 @@ import de.dimm.vsm.client.jna.PosixWrapper;
 import de.dimm.vsm.client.jna.WinSnapshot;
 import de.dimm.vsm.client.win.WinAgentApi;
 import de.dimm.vsm.dokan.VfsDokanVSMFS;
+import de.dimm.vsm.hessian.InetAddressDeserializer;
+import de.dimm.vsm.hessian.InetAddressSerializer;
 import de.dimm.vsm.net.interfaces.AgentApi;
 import de.dimm.vsm.net.interfaces.ServerApi;
 import java.io.BufferedReader;
@@ -32,6 +38,8 @@ import java.util.concurrent.ThreadPoolExecutor;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
+
+
 /**
  *
  * @author Administrator
@@ -40,7 +48,7 @@ public class Main
 {
 
     static String source_str = "trunk";
-    static String version = "1.1.3";
+    static String version = "1.1.4";
     static Main me;
     String work_dir;
     ServerConnector server_conn;
@@ -438,11 +446,33 @@ public class Main
             s.setReceiveBufferSize(256 * 1024);
             s.setReuseAddress(true);
             HessianSkeleton sk = new HessianSkeleton(netServlet, AgentApi.class);
+            SerializerFactory factory = new SerializerFactory() {
+
+                @Override
+                protected Deserializer loadDeserializer( Class cl ) throws HessianProtocolException {
+                    if (InetAddress.class.isAssignableFrom(cl)) {
+                        return new InetAddressDeserializer();
+                    }
+                    else {
+                        return super.loadDeserializer(cl);
+                    }
+                }
+                @Override
+                protected Serializer loadSerializer( Class cl ) throws HessianProtocolException {
+                    if (InetAddress.class.isAssignableFrom(cl)) {
+                        return new InetAddressSerializer();
+                    }
+                    else {
+                        return super.loadSerializer(cl);
+                    }
+                }
+            };
+
             while (s.isConnected())
             {
                 InputStream is = s.getInputStream();
                 OutputStream os = s.getOutputStream();
-                sk.invoke(is, os);
+                sk.invoke(is, os, factory);
             }
         }
         catch (Exception exception)

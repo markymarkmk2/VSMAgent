@@ -1,3 +1,6 @@
+Veränderungen in V1.1.4
+FIX: Java 1.8 -> Serializer InetAddress
+
 Veränderungen in V1.1.1
 UPD: Logging
 
